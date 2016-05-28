@@ -113,13 +113,14 @@ namespace InverseBeamforming
 		/// Creates a new instance of the ModulationType class with seed as the seed for the RNG
 		/// </summary>
 		/// <param name="seed">Seed to initialize the RNG</param>
-		public ModulationType(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower)
+		public ModulationType(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients)
 		{
 			this._rng = new Random(seed);
 			this.CarrierFrequency = carrierFrequency;
 			this.SampleRate = samplingRate;
 			this.SamplesPerSymbol = samplesPerSymbol;
 			this.SignalPower = signalPower;
+			this.FIR_Coefficients = firCoefficients;
 		}
 
 		/// <summary>
@@ -144,6 +145,61 @@ namespace InverseBeamforming
 		/// <returns>Waveform containing the modulated bits</returns>
 		public abstract double[] ModulateBits(byte[] bitsToModulate);
 
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//Demodulation
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		/// <summary>
+		/// Demodulates the waveform based on the internal parameters passed when the class was constructed
+		/// </summary>
+		/// <param name="waveform">Waveform containing the direct samples</param>
+		/// <returns>Estimated bits corresponding to the modulated waveform</returns>
+		public abstract byte[] DemodulateWaveform(double[] waveform);
+
+		/// <summary>
+		/// Implements FIR filtering on the signal using the coefficients given when the instance was constructed
+		/// </summary>
+		/// <param name="signal">Signal to filter</param>
+		/// <returns>Filtered signal</returns>
+		public double[] FIR_Filter(double[] signal)
+		{
+
+			int numTaps = this._firCoefficients.Length;
+			int numSigPoints = signal.Length;
+			int top=0,n,k;
+			double[] reg = new double[numTaps];
+			double[] filteredSignal = new double[numSigPoints];
+			double y;
+
+			for(int j=0; j< numSigPoints; j++)
+			{
+				reg[top] = signal[j];
+				y = 0;
+				n = 0;
+
+				for(k= top; k>=0; k--)
+				{
+					y += this._firCoefficients[n++] * reg[k];
+				}
+				for (k = numTaps-1; k > top; k--)
+				{
+					y += this._firCoefficients[n++] * reg[k];
+				}
+				filteredSignal[j] = y;
+				top++;
+				if(top>=numTaps)
+				{
+					top = 0;
+				}
+			}
+
+			return filteredSignal;
+		}
+
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//Bit functions
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		
 		/// <summary>
 		/// Generates numberBits of random bits.
 		/// </summary>
@@ -163,41 +219,196 @@ namespace InverseBeamforming
 			return bits;
 		}
 
+		/// <summary>
+		/// Gets the number of bits that are different in two equal length bit streams
+		/// </summary>
+		/// <param name="inBits">First bit stream</param>
+		/// <param name="outBits">Second bit stream</param>
+		/// <returns>Number of bit positions that are different between the two streams</returns>
+		public int numberDifferentBits(byte[] inBits, byte[] outBits)
+		{
+			int numberDifferent = 0;
+
+			//Loop and check each bit
+			for(int i=0; i<inBits.Length; i++)
+			{
+				//If they are different, increment the count
+				if (inBits[i] != outBits[i])
+					numberDifferent++;
+			}
+
+			//Return the number that are different
+			return numberDifferent;
+		}
+
+		/// <summary>
+		/// Returns the number of differences between two bit arrays with two categories
+		/// </summary>
+		/// <param name="inBits">Input bit array</param>
+		/// <param name="outBits">Output bit array</param>
+		/// <returns>Number of differences where the input bit is a 1 and the output is a 0, and vice versa.
+		/// The first element is the 0->1 case, and the second element is the 1->0 case.</returns>
+		public int[] numberDifferentBitsEachType(byte[] inBits, byte[] outBits)
+		{
+			int[] numberDifferent = new int[2];
+
+			//Loop and check each bit
+			for (int i = 0; i < inBits.Length; i++)
+			{
+				//If the input bit is a zero and the output bit is a one, increment the first counter
+				if (inBits[i] == 0 && outBits[i] == 1)
+					numberDifferent[0]++;
+				//Else if the inpput bit is a one and the output bit is a zero, increment the second counter
+				else if (inBits[i] == 1 && outBits[i] == 0)
+					numberDifferent[1]++;
+			}
+
+			//Return the two counts
+			return numberDifferent;
+		}
+
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//Demodulation
+		//Noise
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		/// <summary>
-		/// Demodulates the waveform based on the internal parameters passed when the class was constructed
+		/// Creates an array of randomly generated white gaussian noise
 		/// </summary>
-		/// <param name="waveform">Waveform containing the direct samples</param>
-		/// <returns>Estimated bits corresponding to the modulated waveform</returns>
-		public abstract byte[] DemodulateWaveform(double[] waveform);
-
-		public double[] FIR_Filter(ref double[] signal)
+		/// <param name="numberBits">Number of bits long the array should be</param>
+		/// <param name="coefficient">Coefficient that determines the power of the noise</param>
+		/// <returns>Noise array with specified power and length</returns>
+		public double[] AdditiveWhiteGaussianNoise(int numberBits, double coefficient)
 		{
+			//Create an array to hold the noise sample
+			double[] awgn = new double[numberBits * this._samplesPerSymbol];
+			double x, y;
 
-			int numTaps = this._firCoefficients.Length;
-			int numSigPoints = signal.Length;
-			int top=0,n;
-			double[] reg = new double[numTaps];
-			double[] filteredSignal = new double[numTaps];
-			double y;
-
-			for(int j=0; j< numSigPoints; j++)
+			//Loop through each sample
+			for(int i=0; i< awgn.Length; i++)
 			{
-				reg[top] = signal[j];
-				y = 0;
-				n = 0;
-
-				for(int k= top; k>=0; k--)
-				{
-					y += this._firCoefficients[n++] * reg[k];
-				}
-
+				//Uses the Box-Muller transform to get a Gaussian distributed RV
+				x = this._rng.NextDouble();
+				y = this._rng.NextDouble();
+				awgn[i] = Math.Sqrt(coefficient) * (Math.Sqrt(-2 * Math.Log(x)) * Math.Sin(2 * Math.PI * y));
 			}
 
-			return filteredSignal;
+			//Return the noise array
+			return awgn;
+		}
+
+		/// <summary>
+		/// Adds additive white gaussian noise to a waveform
+		/// </summary>
+		/// <param name="waveform">Waveform to add the noise to.</param>
+		/// <param name="coefficient">Power of the noise</param>
+		/// <returns>Actaul power of the noise</returns>
+		public double AdditiveWhiteGaussianNoise(ref double[] waveform, double coefficient)
+		{
+			//Create an array to hold the noise sample
+			double x, y, mean = 0;
+			double[] awgn = new double[waveform.Length];
+
+			if (coefficient != 0)
+			{
+				//Loop through each sample
+				for (int i = 0; i < waveform.Length; i++)
+				{
+					//Uses the Box-Muller transform to get a Gaussian distributed RV
+					x = this._rng.NextDouble();
+					y = this._rng.NextDouble();
+					awgn[i] += Math.Sqrt(coefficient) * (Math.Sqrt(-2 * Math.Log(x)) * Math.Sin(2 * Math.PI * y));
+					waveform[i] += awgn[i];
+					mean += awgn[i];
+				}
+			} 
+			return PowerInWaveform(awgn, mean / waveform.Length);
+		}
+
+		/// <summary>
+		/// Adds additive white gaussian noise to a wavefor
+		/// (Does not return anything)
+		/// </summary>
+		/// <param name="waveform">Waveform to add the noise to.</param>
+		/// <param name="coefficient">Power of the noise</param>
+		public void AdditiveWhiteGaussianNoiseNR(ref double[] waveform, double coefficient)
+		{
+			//Create an array to hold the noise sample
+			double x, y;
+
+			if (coefficient != 0)
+			{
+				//Loop through each sample
+				for (int i = 0; i < waveform.Length; i++)
+				{
+					//Uses the Box-Muller transform to get a Gaussian distributed RV
+					x = this._rng.NextDouble();
+					y = this._rng.NextDouble();
+					waveform[i] += Math.Sqrt(coefficient) * (Math.Sqrt(-2 * Math.Log(x)) * Math.Sin(2 * Math.PI * y));
+				}
+			}
+		}
+
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//Stats
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		/// <summary>
+		/// Get the power in the waveform
+		/// </summary>
+		/// <param name="waveform">Waveform to find the power of</param>
+		/// <returns>The power in the waveform (Watts)</returns>
+		public double PowerInWaveform(double[] waveform)
+		{
+			//The power is just the mean value squared plus the variance
+			return Math.Pow(waveform.Mean(),2) + waveform.Variance();
+		}
+
+		/// <summary>
+		/// Get the power in the waveform
+		/// </summary>
+		/// <param name="waveform">Waveform to find the power of</param>
+		/// <param name="mean">Mean value of the waveform</param>
+		/// <returns>The power in the waveform (Watts)</returns>
+		public double PowerInWaveform(double[] waveform, double mean)
+		{
+			//The power is just the mean value squared plus the variance
+			return Math.Pow(mean, 2) + waveform.Variance(mean);
+		}
+
+		/// <summary>
+		/// Convert the ratio to decibels
+		/// </summary>
+		/// <param name="signalPower">Power in the signal</param>
+		/// <param name="noisePower">Power in the noise</param>
+		/// <returns>Signal to noise ratio in dB</returns>
+		public double Calc_dB(double signalPower, double noisePower)
+		{
+			return 10 * Math.Log10(signalPower / noisePower);
+		}
+
+		/// <summary>
+		/// Runs a simulation for the given parameters and outputs a bit error rate for that simulation
+		/// </summary>
+		/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
+		/// <param name="numberBitsPerIteration">Number of bits simulated in each iteration of the loop</param>
+		/// <returns>Overall bit error rate of the simulation</returns>
+		public double RunSimulationOneNoisePower(int numberToGetWrongEventually, int numberBitsPerIteration, double noisePower)
+		{
+			byte[] inbits;
+			double[] waveform;
+			byte[] outbits;
+
+			int totalNumWrong = 0, totalBitsSimulated = 0;
+			while (totalNumWrong < numberToGetWrongEventually)
+			{
+				inbits = GenerateRandomBits(numberBitsPerIteration);
+				waveform = ModulateBits(inbits);
+				AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
+				outbits = DemodulateWaveform(waveform);
+				totalNumWrong += numberDifferentBits(inbits, outbits);
+				totalBitsSimulated += numberBitsPerIteration;
+			}
+			return totalNumWrong / (double)totalBitsSimulated;
 		}
 	}
 }
