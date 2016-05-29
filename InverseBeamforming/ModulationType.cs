@@ -10,7 +10,7 @@ namespace InverseBeamforming
 	/// <summary>
 	/// Defines an interface that allows multiple modulation types to be created
 	/// </summary>
-	public abstract class ModulationType
+	public abstract class ModulationType : I_SpreadingCode
 	{
 		/// <summary>
 		/// String containing the type of modulation used
@@ -109,6 +109,60 @@ namespace InverseBeamforming
 		}
 		protected double _signalPower;
 
+		/// <summary>
+		/// From I_SpreadingCode, Code matrix to be used to spread signals
+		/// </summary>
+		public byte[,] CodeMatrix
+		{
+			get
+			{
+				return this._codeMatrix;
+			}
+
+			set
+			{
+				throw new NotImplementedException();
+			}
+		}
+		protected byte[,] _codeMatrix;
+
+		/// <summary>
+		/// Number of chips per symbol
+		/// </summary>
+		public int NumChips
+		{
+			get
+			{
+				throw new NotImplementedException();
+			}
+
+			set
+			{
+				throw new NotImplementedException();
+			}
+		}
+		protected int _numChips;
+
+		/// <summary>
+		/// Number of symbols per waveform
+		/// </summary>
+		public int NumberSymbolsPerWaveform
+		{
+			get
+			{
+				return this._numberSymbolsPerWaveform;
+			}
+
+			set
+			{
+				if (value >= 0)
+					this._numberSymbolsPerWaveform = value;
+				else
+					throw new ArgumentOutOfRangeException("NumberSymbolsPerWaveform", "Must be positive.");
+			}
+		}
+		private int _numberSymbolsPerWaveform;
+		
 		/// <summary>
 		/// Creates a new instance of the ModulationType class with seed as the seed for the RNG
 		/// </summary>
@@ -409,6 +463,87 @@ namespace InverseBeamforming
 				totalBitsSimulated += numberBitsPerIteration;
 			}
 			return totalNumWrong / (double)totalBitsSimulated;
+		}
+
+		/// <summary>
+		/// Gets a full waveform length spreading code, ready to multiply with the signal. 
+		/// </summary>
+		/// <param name="user">Index of the spreading code to use (zero based)</param>
+		/// <param name="_samplesPerSymbol">Number of samples per symbol duration</param>
+		/// <param name="_numChips">Number of chips per symbol duration</param>
+		/// <param name="numSymbols">Number of symbols</param>
+		/// <returns>Array containing the spreading code ready to be mixed with the signal</returns>
+		public byte[] GetSpreadingCode(int user, int numSymbols)
+		{
+			//Create a matrix for the spreading code
+			byte[] spreadingCode = new byte[_samplesPerSymbol * numSymbols];
+			int j = 0;
+
+			//If the number of samples per chip is not an integer, throw an exception
+			if (_samplesPerSymbol % _numChips != 0)
+				throw new ArgumentException("The number of samples per chip is not an integer.", "numSamples, numChips");
+			
+			//Loop through each symbol
+			for(int i=0; i<numSymbols; i++)
+			{
+				//Loop through each chip
+				for(int k=0; k<_numChips; i++)
+				{
+					//Loop through the samples in each chip
+					for(j=0; j<_samplesPerSymbol/_numChips; i++)
+					{//              | symbol offset |       chip offset         | left in chip                Chip number
+						spreadingCode[i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips + j] = this._codeMatrix[user, k];
+					}
+				}
+			}
+
+			//Return the spreading code
+			return spreadingCode;
+		}
+		
+		///<summary>
+		/// Applies a spreading code to a waveform
+		/// </summary>
+		/// <param name="waveform">Waveform to spread</param>
+		/// <param name="user">Specific spreading code to use (row in the spreading code matrix)</param>
+		/// <param name="_samplesPerSymbol">Number of samples per symbol</param>
+		/// <param name="_numChips">Number of chips per symbol</param>
+		/// <param name="numSymbols">Number of symbols in the waveform</param>
+		/// <returns>Original waveform with the spreading code applied.</returns>
+		public void SpreadWaveform(ref double[] waveform, int user, int numSymbols)
+		{
+			//If the number of samples per chip is not an integer, throw an exception
+			if (_samplesPerSymbol % _numChips != 0)
+				throw new ArgumentException("The number of samples per chip is not an integer.", "numSamples, numChips");
+
+			//Loop through each symbol
+			for (int i = 0; i < numSymbols; i++)
+			{
+				//Loop through each chip
+				for (int k = 0; k < _numChips; i++)
+				{
+					//Loop through the samples in each chip
+					for (int j = 0; j < _samplesPerSymbol / _numChips; i++)
+					{//         | symbol offset |       chip offset         | left in chip                Chip number
+						waveform[i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips + j] *= this._codeMatrix[user, k];
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Applies a spreading code to a waveform
+		/// </summary>
+		/// <param name="waveform">Waveform to spread</param>
+		/// <param name="user">Specific spreading code to use (row in the spreading code matrix)</param>
+		/// <param name="_samplesPerSymbol">Number of samples per symbol</param>
+		/// <param name="_numChips">Number of chips per symbol</param>
+		/// <param name="numSymbols">Number of symbols in the waveform</param>
+		/// <returns>Original waveform with the spreading code applied.</returns>
+		/// <remarks>In the implementation, it is functionally equivalent to SpreadWaveform. Applying the same spreading code twice gives the original signal back.</remarks>
+		public void DespreadWaveform(ref double[] waveform, int user, int numSymbols)
+		{
+			SpreadWaveform(ref waveform, user, numSymbols);
 		}
 	}
 }
