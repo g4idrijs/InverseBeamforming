@@ -49,7 +49,7 @@ namespace InverseBeamforming
 		/// <param name="numSamples">Number of samples per symbol</param>
 		/// <param name="numChips">Number of chips per symbol</param>
 		/// <param name="numSymbols">Number of symbols in the waveform</param>
-		void SpreadWaveform(ref double[] waveform, int user, int numSymbols);
+		void SpreadWaveform(ref double[] waveform, int user);
 
 		/// <summary>
 		/// Applies a spreading code to a waveform. The original waveform is modified
@@ -60,6 +60,6 @@ namespace InverseBeamforming
 		/// <param name="numChips">Number of chips per symbol</param>
 		/// <param name="numSymbols">Number of symbols in the waveform</param>
 		/// <remarks>In the implementation, it is functionally equivalent to SpreadWaveform. Applying the same spreading code twice gives the original signal back.</remarks>
-		void DespreadWaveform(ref double[] waveform, int user, int numSymbols);
+		void DespreadWaveform(ref double[] waveform, int user);
 	}
 }

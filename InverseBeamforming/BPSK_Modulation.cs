@@ -11,8 +11,6 @@ namespace InverseBeamforming
 	/// </summary>
 	public class BPSK_Modulation : ModulationType
 	{
-		public enum E_ReferenceSignal {Ref1, Ref2 };
-
 		private double[] _reference1;
 		private double[] _reference0;
 
@@ -25,8 +23,8 @@ namespace InverseBeamforming
 		/// <param name="samplesPerSymbol">Number of samples in one symbol</param>
 		/// <param name="signalPower">Average power of the resulting modulated waveforms</param>
 		/// <param name="firCoefficients">Coefficients of an FIR filter to filter with before bit estimation.</param>
-		public BPSK_Modulation(double carrierFrequency, int samplingRate, int seed, int samplesPerSymbol, double signalPower, double[] firCoefficients)
-			: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients)
+		public BPSK_Modulation(double carrierFrequency, int samplingRate, int seed, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform)
+			: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform)
 		{
 			var pi2 = 2 * Math.PI *carrierFrequency / samplingRate;
 			this._reference0 = new double[samplesPerSymbol];
@@ -114,6 +112,5 @@ namespace InverseBeamforming
 
 			return waveform;
 		}
-
 	}
 }

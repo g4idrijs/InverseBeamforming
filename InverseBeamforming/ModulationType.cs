@@ -118,10 +118,9 @@ namespace InverseBeamforming
 			{
 				return this._codeMatrix;
 			}
-
 			set
 			{
-				throw new NotImplementedException();
+				this._codeMatrix = value;
 			}
 		}
 		protected byte[,] _codeMatrix;
@@ -133,12 +132,15 @@ namespace InverseBeamforming
 		{
 			get
 			{
-				throw new NotImplementedException();
+				return this._numChips;
 			}
 
 			set
 			{
-				throw new NotImplementedException();
+				if (value > 0 && _samplesPerSymbol % value==0)
+					this._numChips = value;
+				else
+					throw new ArgumentOutOfRangeException("NumChips", "Value must be postive and evenly divide into SamplesPerSymbol");
 			}
 		}
 		protected int _numChips;
@@ -167,7 +169,7 @@ namespace InverseBeamforming
 		/// Creates a new instance of the ModulationType class with seed as the seed for the RNG
 		/// </summary>
 		/// <param name="seed">Seed to initialize the RNG</param>
-		public ModulationType(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients)
+		public ModulationType(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform)
 		{
 			this._rng = new Random(seed);
 			this.CarrierFrequency = carrierFrequency;
@@ -175,6 +177,7 @@ namespace InverseBeamforming
 			this.SamplesPerSymbol = samplesPerSymbol;
 			this.SignalPower = signalPower;
 			this.FIR_Coefficients = firCoefficients;
+			this.NumberSymbolsPerWaveform = numberSymbolsPerWaveform;
 		}
 
 		/// <summary>
@@ -183,11 +186,10 @@ namespace InverseBeamforming
 		/// </summary>
 		/// <param name="numberBits">Number of bits to modulate</param>
 		/// <returns>Waveform containg the modulated bits</returns>
-		public double[] ModulateBits(int numberBits)
+		public double[] ModulateBits()
 		{
-			var bits = this.GenerateRandomBits(numberBits);
-
-			return this.ModulateBits(bits);
+			//Generate and modulate bits
+			return this.ModulateBits(this.GenerateRandomBits());
 		}
 
 		/// <summary>
@@ -259,13 +261,13 @@ namespace InverseBeamforming
 		/// </summary>
 		/// <param name="numberBits">The number of bits to generate</param>
 		/// <returns>Byte array containg the generated bits</returns>
-		public byte[] GenerateRandomBits(int numberBits)
+		public byte[] GenerateRandomBits()
 		{
 			//Create the array
-			var bits = new byte[numberBits];
+			var bits = new byte[this._numberSymbolsPerWaveform];
 			
 			//Fill each bit with a random value
-			for(int i=0; i<numberBits; i++)
+			for(int i=0; i<this._numberSymbolsPerWaveform; i++)
 			{
 				bits[i] = (byte)this._rng.Next(0, 2);
 			}
@@ -328,13 +330,13 @@ namespace InverseBeamforming
 		/// <summary>
 		/// Creates an array of randomly generated white gaussian noise
 		/// </summary>
-		/// <param name="numberBits">Number of bits long the array should be</param>
+		/// <param name="_numberSymbolsPerWaveform">Number of bits long the array should be</param>
 		/// <param name="coefficient">Coefficient that determines the power of the noise</param>
 		/// <returns>Noise array with specified power and length</returns>
-		public double[] AdditiveWhiteGaussianNoise(int numberBits, double coefficient)
+		public double[] AdditiveWhiteGaussianNoise(double coefficient)
 		{
 			//Create an array to hold the noise sample
-			double[] awgn = new double[numberBits * this._samplesPerSymbol];
+			double[] awgn = new double[this._numberSymbolsPerWaveform * this._samplesPerSymbol];
 			double x, y;
 
 			//Loop through each sample
@@ -446,7 +448,7 @@ namespace InverseBeamforming
 		/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
 		/// <param name="numberBitsPerIteration">Number of bits simulated in each iteration of the loop</param>
 		/// <returns>Overall bit error rate of the simulation</returns>
-		public double RunSimulationOneNoisePower(int numberToGetWrongEventually, int numberBitsPerIteration, double noisePower)
+		public double RunSimulationOneNoisePower(int numberToGetWrongEventually, double noisePower)
 		{
 			byte[] inbits;
 			double[] waveform;
@@ -455,12 +457,12 @@ namespace InverseBeamforming
 			int totalNumWrong = 0, totalBitsSimulated = 0;
 			while (totalNumWrong < numberToGetWrongEventually)
 			{
-				inbits = GenerateRandomBits(numberBitsPerIteration);
+				inbits = GenerateRandomBits();
 				waveform = ModulateBits(inbits);
 				AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
 				outbits = DemodulateWaveform(waveform);
 				totalNumWrong += numberDifferentBits(inbits, outbits);
-				totalBitsSimulated += numberBitsPerIteration;
+				totalBitsSimulated += this._numberSymbolsPerWaveform;
 			}
 			return totalNumWrong / (double)totalBitsSimulated;
 		}
@@ -508,24 +510,24 @@ namespace InverseBeamforming
 		/// <param name="user">Specific spreading code to use (row in the spreading code matrix)</param>
 		/// <param name="_samplesPerSymbol">Number of samples per symbol</param>
 		/// <param name="_numChips">Number of chips per symbol</param>
-		/// <param name="numSymbols">Number of symbols in the waveform</param>
+		/// <param name="_numberSymbolsPerWaveform">Number of symbols in the waveform</param>
 		/// <returns>Original waveform with the spreading code applied.</returns>
-		public void SpreadWaveform(ref double[] waveform, int user, int numSymbols)
+		public void SpreadWaveform(ref double[] waveform, int user)
 		{
 			//If the number of samples per chip is not an integer, throw an exception
 			if (_samplesPerSymbol % _numChips != 0)
 				throw new ArgumentException("The number of samples per chip is not an integer.", "numSamples, numChips");
 
 			//Loop through each symbol
-			for (int i = 0; i < numSymbols; i++)
+			for (int i = 0; i < _numberSymbolsPerWaveform; i++)
 			{
 				//Loop through each chip
-				for (int k = 0; k < _numChips; i++)
+				for (int k = 0; k < _numChips; k++)
 				{
 					//Loop through the samples in each chip
-					for (int j = 0; j < _samplesPerSymbol / _numChips; i++)
-					{//         | symbol offset |       chip offset         | left in chip                Chip number
-						waveform[i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips + j] *= this._codeMatrix[user, k];
+					for (int j = 0; j < _samplesPerSymbol / _numChips; j++)
+					{//         | symbol offset |       chip offset         | left in chip										Chip number
+						waveform[i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips + j] *= ((double)this._codeMatrix[user, k]*2-1);
 					}
 				}
 			}
@@ -538,12 +540,23 @@ namespace InverseBeamforming
 		/// <param name="user">Specific spreading code to use (row in the spreading code matrix)</param>
 		/// <param name="_samplesPerSymbol">Number of samples per symbol</param>
 		/// <param name="_numChips">Number of chips per symbol</param>
-		/// <param name="numSymbols">Number of symbols in the waveform</param>
+		/// <param name="_numberSymbolsPerWaveform">Number of symbols in the waveform</param>
 		/// <returns>Original waveform with the spreading code applied.</returns>
 		/// <remarks>In the implementation, it is functionally equivalent to SpreadWaveform. Applying the same spreading code twice gives the original signal back.</remarks>
-		public void DespreadWaveform(ref double[] waveform, int user, int numSymbols)
+		public void DespreadWaveform(ref double[] waveform, int user)
 		{
-			SpreadWaveform(ref waveform, user, numSymbols);
+			SpreadWaveform(ref waveform, user);
+		}
+
+		/// <summary>
+		/// Initializes the components necesary to utilize the spreading functions
+		/// </summary>
+		/// <param name="codeMatrix">Code matrix to use to spread the waveforms</param>
+		/// <param name="numChips">Number of chips per symbol</param>
+		public void initializeSpreadingCodes(byte[,] codeMatrix, int numChips)
+		{
+			this.NumChips = numChips;
+			this.CodeMatrix = codeMatrix;
 		}
 	}
 }
