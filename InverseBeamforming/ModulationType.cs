@@ -446,25 +446,119 @@ namespace InverseBeamforming
 		/// Runs a simulation for the given parameters and outputs a bit error rate for that simulation
 		/// </summary>
 		/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
-		/// <param name="numberBitsPerIteration">Number of bits simulated in each iteration of the loop</param>
+		/// <param name="noisePower">Spectral power of the noise</param>
 		/// <returns>Overall bit error rate of the simulation</returns>
-		public double RunSimulationOneNoisePower(int numberToGetWrongEventually, double noisePower)
+		public double RunSimulationOneNoisePowerIdealFiltering(int numberToGetWrongEventually, double noisePower)
 		{
 			byte[] inbits;
 			double[] waveform;
 			byte[] outbits;
 
 			int totalNumWrong = 0, totalBitsSimulated = 0;
+
+			//Loop while there haven't been enough bit estimation errors
 			while (totalNumWrong < numberToGetWrongEventually)
 			{
+				//Generate Random bits
 				inbits = GenerateRandomBits();
+				
+				//Modulate the bits
 				waveform = ModulateBits(inbits);
+				
+				//Add noise to the waveform
 				AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
+				
+				//Demodulate the waveform+noise
 				outbits = DemodulateWaveform(waveform);
+
+				//Get the total number of bits that were estimated wrongly
 				totalNumWrong += numberDifferentBits(inbits, outbits);
+
+				//Update the total number of bits simulated
 				totalBitsSimulated += this._numberSymbolsPerWaveform;
 			}
+
+			//Return the bit error rate
 			return totalNumWrong / (double)totalBitsSimulated;
+		}
+
+		/// <summary>
+		/// Runs a simulation for the given parameters and outputs a bit error rate for that simulation (Real Filters)
+		/// </summary>
+		/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
+		/// <param name="noisePower">Spectral power of the noise</param>
+		/// <returns>Overall bit error rate of the simulation</returns>
+		public double RunSimulationOneNoisePowerRealFiltering(int numberToGetWrongEventually, double noisePower)
+		{
+			byte[] inbits;
+			double[] waveform;
+			byte[] outbits;
+
+			int totalNumWrong = 0, totalBitsSimulated = 0;
+
+			//Loop while there haven't been enough bit estimation errors
+			while (totalNumWrong < numberToGetWrongEventually)
+			{
+				//Generate Random bits
+				inbits = GenerateRandomBits();
+
+				//Modulate the bits
+				waveform = ModulateBits(inbits);
+
+				//Add noise to the waveform
+				AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
+
+				//Filter the waveform
+				waveform=FIR_Filter(waveform);
+
+				//Demodulate the waveform+noise
+				outbits = DemodulateWaveform(waveform);
+
+				//Get the total number of bits that were estimated wrongly
+				totalNumWrong += numberDifferentBits(inbits, outbits);
+
+				//Update the total number of bits simulated
+				totalBitsSimulated += this._numberSymbolsPerWaveform;
+			}
+
+			//Return the bit error rate
+			return totalNumWrong / (double)totalBitsSimulated;
+		}
+
+		/// <summary>
+		/// Runs a simulation over many given noise powers, and returns the bit error rate from each simulation
+		/// </summary>
+		/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
+		/// <param name="noisePowers">Array of spectral powers of noise to simulate</param>
+		/// <returns>Bit error rates of every simulation</returns>
+		public double[] RunSimulationManyNoisePowersIdealFiltering(int numberToGetWrongEventually, double[] noisePowers)
+		{
+			double[] bers = new double[noisePowers.Length];
+			//Loop through each of the noise powers
+			Parallel.For(0, noisePowers.Length - 1, i =>
+			  {
+				//yield return the BER from that simulation
+				bers[i] = RunSimulationOneNoisePowerIdealFiltering(numberToGetWrongEventually, noisePowers[i]);
+			  });
+			return bers;
+		}
+
+		/// <summary>
+		/// Runs a simulation over many given noise powers, and returns the bit error rate from each simulation (Real Filter)
+		/// </summary>
+		/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
+		/// <param name="noisePowers">Array of spectral powers of noise to simulate</param>
+		/// <returns>Bit error rates of every simulation</returns>
+		public double[] RunSimulationManyNoisePowersRealFiltering(int numberToGetWrongEventually, double[] noisePowers)
+		{
+			double[] bers = new double[noisePowers.Length];
+			//Loop through each of the noise powers
+			Parallel.For(0, noisePowers.Length - 1, i =>
+			{
+				//yield return the BER from that simulation
+				bers[i] = RunSimulationOneNoisePowerRealFiltering(numberToGetWrongEventually, noisePowers[i]);
+			});
+			return bers;
 		}
 
 		/// <summary>
