@@ -42,8 +42,10 @@
   <ItemGroup>
     <Compile Include="BPSK_Modulation.cs" />
     <Compile Include="ExtensionMethods.cs" />
+    <Compile Include="MFSK_Modulation.cs" />
     <Compile Include="ModulationType.cs" />
     <Compile Include="I_SpreadingCode.cs" />
+    <Compile Include="MPSK_Modulation.cs" />
     <Compile Include="Positions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

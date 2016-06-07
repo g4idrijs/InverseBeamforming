@@ -13,7 +13,7 @@ namespace InverseBeamforming.Tests
 	[TestClass()]
 	public class BPSK_ModulationTests
 	{
-		private string _testFileDumpDirec = @"C:\Users\vikin_000\OneDrive\AFIT\Thesis\Code\C_Sharp\InvBeamLib\InverseBeamforming\TestFileDump" + Path.DirectorySeparatorChar;
+		private string _testFileDumpDirec = @"C:\Users\vikin_000\OneDrive\AFIT\Thesis\Code\C_Sharp\InvBeamLib\InverseBeamforming\TestFileDump\BPSK" + Path.DirectorySeparatorChar;
 
 		[TestMethod()]
 		public void BPSK_ModulationTest()
@@ -53,7 +53,7 @@ namespace InverseBeamforming.Tests
 
 			byte[] inbits = bpsk.GenerateRandomBits();
 			double[] waveform = bpsk.ModulateBits(inbits);
-			byte[] outbits = bpsk.DemodulateWaveform(waveform);
+			byte[] outbits = bpsk.CorrelationReceiver(waveform);
 
 			CollectionAssert.AreEqual(inbits, outbits);
 		}
@@ -85,7 +85,7 @@ namespace InverseBeamforming.Tests
 			byte[] inbits = bpsk.GenerateRandomBits();
 			double[] waveform = bpsk.ModulateBits(inbits);
 			double[] noisePower = new double[numTests];
-			byte[] outbits = bpsk.DemodulateWaveform(waveform);
+			byte[] outbits = bpsk.CorrelationReceiver(waveform);
 
 			int[,] numWrong = new int[numTests, 2];
 			int[] temp;
@@ -94,7 +94,7 @@ namespace InverseBeamforming.Tests
 				inbits = bpsk.GenerateRandomBits();
 				waveform = bpsk.ModulateBits(inbits);
 				noisePower[i] = bpsk.AdditiveWhiteGaussianNoise(ref waveform, 1);
-				outbits = bpsk.DemodulateWaveform(waveform);
+				outbits = bpsk.CorrelationReceiver(waveform);
 				temp = bpsk.numberDifferentBitsEachType(inbits, outbits);
 				numWrong[i, 0] = temp[0];
 				numWrong[i, 1] = temp[1];
@@ -122,7 +122,7 @@ namespace InverseBeamforming.Tests
 		public void RunSimulationManyNoisePowers_Test()
 		{
 			var bpsk = new BPSK_Modulation(101680, 1220160, 1, 7680, .5, null, 1000);
-			double[] bers = bpsk.RunSimulationManyNoisePowersIdealFiltering(500, new double[] {1600, 2000, 3000 });
+			double[] bers = bpsk.RunSimulationManyNoisePowersIdealFiltering(500, new double[] {2000, 3000 });
 			writeToCSV(bers, "RunSimulationManyNoisePowers_Test");
 		}
 

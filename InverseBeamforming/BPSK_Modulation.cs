@@ -11,9 +11,6 @@ namespace InverseBeamforming
 	/// </summary>
 	public class BPSK_Modulation : ModulationType
 	{
-		private double[] _reference1;
-		private double[] _reference0;
-
 		/// <summary>
 		/// Create an instance with the given parameters
 		/// </summary>
@@ -23,60 +20,19 @@ namespace InverseBeamforming
 		/// <param name="samplesPerSymbol">Number of samples in one symbol</param>
 		/// <param name="signalPower">Average power of the resulting modulated waveforms</param>
 		/// <param name="firCoefficients">Coefficients of an FIR filter to filter with before bit estimation.</param>
+		/// <param name="numberSymbolsPerWaveform">Number of symbols created in each waveform</param>
 		public BPSK_Modulation(double carrierFrequency, int samplingRate, int seed, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform)
-			: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform)
+			: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, 2)
 		{
 			var pi2 = 2 * Math.PI *carrierFrequency / samplingRate;
-			this._reference0 = new double[samplesPerSymbol];
-			this._reference1 = new double[samplesPerSymbol];
+
+			this._bitsToCommunicationsSymbols = new byte[] { 0, 1 };
 
 			for (int i=0; i<samplesPerSymbol; i++)
 			{
-				this._reference1[i] = Math.Cos(pi2 * i);
-				this._reference0[i] = -_reference1[i];
+				this._reference[1,i] = Math.Cos(pi2 * i);
+				this._reference[0,i] = -_reference[1,i];
 			}
-		}
-
-		/// <summary>
-		/// Demodulates a waveform by estimating the bits
-		/// </summary>
-		/// <param name="waveform">Waveform to estimate bits from</param>
-		/// <returns>Estimated bits from the waveform</returns>
-		/// <remarks>This method assumes perfect synchronization with the received waveform, and perfect symbol boundaries.</remarks>
-		public override byte[] DemodulateWaveform(double[] waveform)
-		{
-			//Create array to hold the demodulated bits
-			byte[] bits = new byte[waveform.Length / this._samplesPerSymbol];
-
-			//Create an array to hold all of the z-Scores
-			double z1, z2;
-			
-			//Loop through each symbol
-			for(int i=0; i< bits.Length; i++)
-			{
-				//Reset the z scores
-				z1 = 0;
-				z2 = 0;
-				//Loop through each sample i the signal
-				for(int k=0; k<_samplesPerSymbol; k++)
-				{
-					//Correlate the symbol to the reference signals
-					z1+=waveform[i * _samplesPerSymbol + k] * _reference1[k];
-					z2+=waveform[i * _samplesPerSymbol + k] * _reference0[k];
-				}
-				//If the z score from the first reference is higher than the second reference, then call the bit a 1
-				if(z1>=z2)
-				{
-					bits[i] = 1;
-				}
-				else	//Else call it a 0
-				{
-					bits[i] = 0;
-				}
-			}
-
-			//Return the bit array
-			return bits;
 		}
 
 		/// <summary>
@@ -88,11 +44,7 @@ namespace InverseBeamforming
 		{
 			//Generate the (full length) time vector
 			var vecLength = bitsToModulate.Length * this._samplesPerSymbol;
-			var time = new double[vecLength];
-			for(int i=0; i< vecLength; i++)
-			{
-				time[i] = (double)i / this._sampleRate;
-			}
+			var time = getTimeArray(vecLength);
 
 			//Generate the (bit length) phase vector
 			double phase;

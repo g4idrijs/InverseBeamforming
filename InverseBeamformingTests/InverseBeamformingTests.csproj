@@ -52,6 +52,8 @@
   </Choose>
   <ItemGroup>
     <Compile Include="BPSK_ModulationTests.cs" />
+    <Compile Include="MFSK_ModulationTests.cs" />
+    <Compile Include="MPSK_ModulationTests.cs" />
     <Compile Include="PositionsTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

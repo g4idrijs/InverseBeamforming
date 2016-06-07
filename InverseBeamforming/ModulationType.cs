@@ -163,13 +163,44 @@ namespace InverseBeamforming
 					throw new ArgumentOutOfRangeException("NumberSymbolsPerWaveform", "Must be positive.");
 			}
 		}
-		private int _numberSymbolsPerWaveform;
-		
+		protected int _numberSymbolsPerWaveform;
+
+		/// <summary>
+		/// Number of unique communications symbols available for use
+		/// </summary>
+		public int M
+		{
+			get { return this._M; }
+			set
+			{
+				if (value > 1)
+					this._M = value;
+				else
+					throw new ArgumentOutOfRangeException("M", "The number of unique symbols M must be 2 or greater.");
+			}
+		}
+		protected int _M;
+
+		/// <summary>
+		/// Holds the reference waveforms for correlation implelmentation of a matched filter
+		/// </summary>
+		protected double[,] _reference;
+
+		/// <summary>
+		/// Bit arrays corresponding to each communications symbol
+		/// </summary>
+		public byte[] BitsToCommunicationsSymbols
+		{
+			get { return this._bitsToCommunicationsSymbols; }
+			set { this._bitsToCommunicationsSymbols = value; }
+		}
+		protected byte[] _bitsToCommunicationsSymbols;
+
 		/// <summary>
 		/// Creates a new instance of the ModulationType class with seed as the seed for the RNG
 		/// </summary>
 		/// <param name="seed">Seed to initialize the RNG</param>
-		public ModulationType(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform)
+		public ModulationType(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform, int M)
 		{
 			this._rng = new Random(seed);
 			this.CarrierFrequency = carrierFrequency;
@@ -178,6 +209,10 @@ namespace InverseBeamforming
 			this.SignalPower = signalPower;
 			this.FIR_Coefficients = firCoefficients;
 			this.NumberSymbolsPerWaveform = numberSymbolsPerWaveform;
+			this.M = M;
+
+			//Initalize the reference array
+			this._reference = new double[M, samplesPerSymbol];
 		}
 
 		/// <summary>
@@ -206,11 +241,55 @@ namespace InverseBeamforming
 		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		/// <summary>
-		/// Demodulates the waveform based on the internal parameters passed when the class was constructed
+		/// Demodulates a waveform by estimating the bits using a correlation receiver structure
 		/// </summary>
-		/// <param name="waveform">Waveform containing the direct samples</param>
-		/// <returns>Estimated bits corresponding to the modulated waveform</returns>
-		public abstract byte[] DemodulateWaveform(double[] waveform);
+		/// <param name="waveform">Waveform to estimate bits from</param>
+		/// <returns>Estimated bits from the waveform</returns>
+		/// <remarks>This method assumes perfect synchronization with the received waveform, and perfect symbol boundaries.</remarks>
+		public byte[] CorrelationReceiver(double[] waveform)
+		{
+			//Create array to hold the demodulated bits
+			byte[] bits = new byte[waveform.Length / this._samplesPerSymbol];
+
+			//Create an array to hold all of the z-Scores
+			double[] z = new double[M];
+			int bigZ = 0;
+
+			//Loop through each symbol
+			for (int i = 0; i < bits.Length; i++)
+			{
+				//Reset big Z
+				bigZ = 0;
+
+				//Reset the z scores
+				for (int j = 0; j < M; j++)
+				{
+					z[j] = 0;
+				}
+
+				//Loop through each sample i the signal
+				for (int k = 0; k < _samplesPerSymbol; k++)
+				{
+					//Correlate the symbol to the reference signals
+					for (int j = 0; j < M; j++)
+					{
+						z[j] += waveform[i * _samplesPerSymbol + k] * _reference[j,k];
+					}
+				}
+				
+				for (int j = 0; j < M; j++)
+				{
+					//If there is a new biggest z-score, then save its bit
+					if (z[j] > z[bigZ])
+						bigZ = j;
+				}
+				
+				bits[i] = this._bitsToCommunicationsSymbols[bigZ];
+			}
+
+			//Return the bit array
+			return bits;
+		}
 
 		/// <summary>
 		/// Implements FIR filtering on the signal using the coefficients given when the instance was constructed
@@ -269,7 +348,7 @@ namespace InverseBeamforming
 			//Fill each bit with a random value
 			for(int i=0; i<this._numberSymbolsPerWaveform; i++)
 			{
-				bits[i] = (byte)this._rng.Next(0, 2);
+				bits[i] = (byte)this._rng.Next(0, M);
 			}
 			//Return the array
 			return bits;
@@ -469,7 +548,7 @@ namespace InverseBeamforming
 				AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
 				
 				//Demodulate the waveform+noise
-				outbits = DemodulateWaveform(waveform);
+				outbits = CorrelationReceiver(waveform);
 
 				//Get the total number of bits that were estimated wrongly
 				totalNumWrong += numberDifferentBits(inbits, outbits);
@@ -512,7 +591,7 @@ namespace InverseBeamforming
 				waveform=FIR_Filter(waveform);
 
 				//Demodulate the waveform+noise
-				outbits = DemodulateWaveform(waveform);
+				outbits = CorrelationReceiver(waveform);
 
 				//Get the total number of bits that were estimated wrongly
 				totalNumWrong += numberDifferentBits(inbits, outbits);
@@ -560,6 +639,10 @@ namespace InverseBeamforming
 			});
 			return bers;
 		}
+
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//Spreading Codes
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		/// <summary>
 		/// Gets a full waveform length spreading code, ready to multiply with the signal. 
@@ -651,6 +734,70 @@ namespace InverseBeamforming
 		{
 			this.NumChips = numChips;
 			this.CodeMatrix = codeMatrix;
+		}
+
+		/// <summary>
+		/// Returns the gold codes of length 31
+		/// </summary>
+		/// <returns>Byte array containing the gold codes of length 31</returns>
+		private byte[,] getGoldCodes()
+		{
+			return new byte[,] {{0,0,0,1,0,1,1,0,0,1,1,1,1,1,0,0,0,1,1,0,1,1,1,0,1,0,1,0,0,0,0,1},
+								{1,1,0,1,1,0,1,0,0,0,0,1,1,0,0,1,0,0,1,1,1,1,1,0,1,1,1,0,0,0,1,0},
+								{1,1,0,0,1,1,0,0,0,1,1,0,0,1,0,1,0,1,0,1,0,0,0,0,0,1,0,0,0,0,1,1},
+								{0,0,1,0,0,0,1,0,0,1,0,0,1,1,1,0,0,0,0,1,0,0,1,1,0,1,1,0,0,1,0,0},
+								{1,1,1,1,1,1,1,0,0,0,0,1,1,0,0,0,1,0,0,1,0,1,0,1,0,0,1,0,1,0,1,1},
+								{1,1,0,0,0,1,1,0,1,0,1,1,0,1,0,1,1,0,0,1,1,0,0,1,1,0,1,1,0,1,0,0},
+								{0,0,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0},
+								{1,1,0,1,0,1,0,1,0,1,0,1,1,0,1,1,1,0,1,1,0,0,1,0,1,1,1,1,0,1,1,1},
+								{0,0,0,1,0,0,0,0,0,0,1,1,0,0,1,1,1,1,0,1,0,1,1,0,0,0,0,0,1,1,0,0},
+								{0,0,0,1,1,0,1,0,1,1,1,0,0,0,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,0,1,1},
+								{0,0,0,0,1,1,1,1,0,1,0,0,0,0,1,0,1,0,0,0,1,1,0,0,0,0,0,1,0,1,0,1},
+								{0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,1,0,0,1,0,0,1},
+								{1,1,1,1,0,0,1,0,1,0,0,0,0,1,1,1,1,1,1,0,0,1,0,0,0,1,1,1,0,0,0,1},
+								{1,1,0,1,1,1,1,1,1,0,0,0,1,0,1,1,0,1,1,1,1,0,1,1,0,0,0,0,0,0,0,0},
+								{0,0,0,0,0,1,0,1,1,0,0,1,0,0,1,0,0,1,0,0,0,1,0,1,1,1,1,0,0,0,1,0},
+								{0,0,1,1,0,0,0,1,1,0,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,1,1,1},
+								{1,1,0,1,1,0,0,1,1,1,0,0,0,1,0,0,1,1,0,0,0,0,1,1,1,0,1,0,1,1,0,1},
+								{0,0,0,0,1,0,0,1,0,0,0,0,1,1,0,1,0,0,1,1,0,1,0,0,1,0,1,1,1,0,0,0},
+								{0,0,1,0,1,0,0,0,1,0,0,1,1,1,1,0,1,1,0,1,1,0,1,0,1,0,0,1,0,0,1,1},
+								{1,1,1,0,1,0,1,1,1,0,1,1,1,0,0,1,0,0,0,0,0,1,1,0,1,1,0,0,0,1,0,1},
+								{1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,0,1,0,1,1,1,1,1,0,0,1,1,0,1,0,0,0},
+								{1,1,1,0,0,0,0,1,0,1,1,0,1,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,0,1,0},
+								{1,1,1,1,1,0,0,0,0,1,0,1,0,1,1,1,0,0,1,0,1,1,0,1,1,0,0,0,0,1,1,0},
+								{1,1,0,0,1,0,1,0,0,0,1,0,1,0,1,0,1,1,1,0,1,0,0,0,1,1,1,0,1,1,1,0},
+								{0,0,1,0,1,1,1,0,1,1,0,1,0,0,0,1,0,1,1,0,0,0,1,0,0,0,1,1,1,1,1,0},
+								{1,1,1,0,0,1,1,1,0,0,1,0,0,1,1,0,0,1,1,1,0,1,1,1,1,0,0,1,1,1,1,1},
+								{1,1,1,1,0,1,0,0,1,1,0,0,1,0,0,0,0,1,0,1,1,1,0,0,1,1,0,1,1,1,0,0},
+								{1,1,0,1,0,0,1,1,0,0,0,1,0,1,0,0,0,0,0,0,1,0,1,0,0,1,0,1,1,0,1,0},
+								{0,0,0,1,1,1,0,0,1,0,1,0,1,1,0,0,1,0,1,0,0,1,1,1,0,1,0,1,0,1,1,0},
+								{0,0,0,0,0,0,1,1,1,1,0,1,1,1,0,1,1,1,1,1,1,1,0,1,0,1,0,0,1,1,1,1},
+								{0,0,1,1,1,1,0,1,0,0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,1,1,1,1,1,0,1},
+								{1,1,0,0,0,0,0,0,1,1,1,1,1,0,1,0,0,0,1,0,0,0,0,1,0,0,0,1,1,0,0,1},
+								{0,0,1,1,1,0,1,1,0,1,1,1,0,0,0,0,1,1,1,1,0,0,0,1,1,1,0,1,0,0,0,0}};
+		}
+
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//Helper Functions
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		/// <summary>
+		/// Generate a time vector starting at 0
+		/// </summary>
+		/// <returns>Time vector</returns>
+		protected double[] getTimeArray(int vecLength)
+		{
+			//Generate the (full length) time vector
+			var time = new double[vecLength];
+
+			//Calculate the times
+			for (int i = 0; i < vecLength; i++)
+			{
+				time[i] = (double)i / this._sampleRate;
+			}
+
+			//Return the time array
+			return time;
 		}
 	}
 }
