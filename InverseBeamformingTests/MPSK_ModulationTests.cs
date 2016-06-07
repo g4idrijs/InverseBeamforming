@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using MPSK_Modulation=InverseBeamforming.Modulations.MPSK_Modulation;
 
 namespace InverseBeamforming.Tests
 {

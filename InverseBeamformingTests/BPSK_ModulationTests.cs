@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.IO;
+using BPSK_Modulation = InverseBeamforming.Modulations.BPSK_Modulation;
 
 namespace InverseBeamforming.Tests
 {
