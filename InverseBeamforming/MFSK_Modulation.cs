@@ -38,7 +38,7 @@ namespace InverseBeamforming
 			/// <param name="numberSymbolsPerWaveform">Number of symbols created in each waveform</param>
 			/// <param name="M">Number of unique communications symbols</param>
 			/// <param name="frequencies">Frequencies used for each communications symbol</param>
-			public MFSK_Modulation(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform, int M, double[] frequencies)
+			public MFSK_Modulation(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform, int M, double[] frequencies, byte[] bitsToCommunicationsSymbols)
 				: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, M)
 			{
 				//Set up the frequencies to be used to generate the reference waveforms
@@ -57,7 +57,8 @@ namespace InverseBeamforming
 					}
 				}
 
-				this._bitsToCommunicationsSymbols = new byte[] { 0, 1, 2, 3 };
+				//Set the bit to communication symbol matching
+				this._bitsToCommunicationsSymbols = bitsToCommunicationsSymbols;
 			}
 
 			/// <summary>

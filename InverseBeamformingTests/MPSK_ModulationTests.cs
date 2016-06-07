@@ -18,14 +18,14 @@ namespace InverseBeamforming.Tests
 		[TestMethod()]
 		public void MPSK_ModulationTest()
 		{
-			var mpsk = new MPSK_Modulation(10, 40, 1, 20, .5, null, 1000, 4, new double[] { 0, Math.PI/4, Math.PI / 2, 3*Math.PI / 4 });
+			var mpsk = new MPSK_Modulation(10, 40, 1, 20, .5, null, 1000, 4, new double[] { 0, Math.PI/4, Math.PI / 2, 3*Math.PI / 4 }, new byte[] { 0, 1, 2, 3 });
 		}
 
 		[TestMethod()]
 		public void ModulateBitsTest()
 		{
 			var sampleRate = 1000;
-			var mpsk = new MPSK_Modulation(100, sampleRate, 40, 100, .5, null, 1000, 4, new double[] { 0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4 });
+			var mpsk = new MPSK_Modulation(100, sampleRate, 40, 100, .5, null, 1000, 4, new double[] { 0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4 }, new byte[] { 0, 1, 2, 3 });
 			double[] waveform = mpsk.ModulateBits();
 			writeToCSV(waveform, "MPSK_ModulateBitsTest");
 		}
@@ -34,7 +34,7 @@ namespace InverseBeamforming.Tests
 		public void DemodulateWaveformTest()
 		{
 			var sampleRate = 1000;
-			var mpsk = new MPSK_Modulation(100, sampleRate, 40, 100, .5, null, 1000, 4, new double[] { 0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4 });
+			var mpsk = new MPSK_Modulation(100, sampleRate, 40, 100, .5, null, 1000, 4, new double[] { 0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4 }, new byte[] { 0, 1, 2, 3 });
 			byte[] inbits = mpsk.GenerateRandomBits();
 			double[] waveform = mpsk.ModulateBits(inbits);
 			byte[] outbits = mpsk.CorrelationReceiver(waveform);

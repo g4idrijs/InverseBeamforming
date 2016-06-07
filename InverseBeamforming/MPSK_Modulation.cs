@@ -42,13 +42,11 @@ namespace InverseBeamforming
 			/// <param name="firCoefficients">Coefficients of an FIR filter to filter with before bit estimation.</param>
 			/// <param name="numberSymbolsPerWaveform">Number of symbols created in each waveform</param>
 			/// <param name="M">Number of unique communications symbols</param>
-			public MPSK_Modulation(double carrierFrequency, int samplingRate, int seed, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform, int M, double[] phases)
+			public MPSK_Modulation(double carrierFrequency, int samplingRate, int seed, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform, int M, double[] phases, byte[] bitsToCommunicationsSymbols)
 				: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, M)
 			{
 				this.Phases = phases;
 				var pi2 = 2 * Math.PI * carrierFrequency / samplingRate;
-
-				this._bitsToCommunicationsSymbols = new byte[] { 0, 1 };
 
 				//Loop through each symbol
 				for (int i = 0; i < M; i++)
@@ -60,9 +58,15 @@ namespace InverseBeamforming
 					}
 				}
 
-				this._bitsToCommunicationsSymbols = new byte[] { 0, 1, 2, 3 };
+				//Set the bit to communication symbol matching
+				this._bitsToCommunicationsSymbols = bitsToCommunicationsSymbols;
 			}
 
+			/// <summary>
+			/// Modulates bits using the parameters already set
+			/// </summary>
+			/// <param name="bitsToModulate">Array of bits to modulate</param>
+			/// <returns>Waveform representing the modulated bits</returns>
 			public override double[] ModulateBits(byte[] bitsToModulate)
 			{
 				//Generate the (full length) time vector

@@ -18,14 +18,14 @@ namespace InverseBeamforming.Tests
 		[TestMethod()]
 		public void MFSK_ModulationTest()
 		{
-			var mfsk = new MFSK_Modulation(10, 40, 1, 20, .5, null, 1000, 4, new double[] { 1000, 2000, 3000, 4000 });
+			var mfsk = new MFSK_Modulation(10, 40, 1, 20, .5, null, 1000, 4, new double[] { 1000, 2000, 3000, 4000 }, new byte[] { 0, 1, 2, 3 });
 		}
 
 		[TestMethod()]
 		public void ModulateBitsTest()
 		{
 			var sampleRate = 1000;
-			var mfsk = new MFSK_Modulation(10, 40, sampleRate, 100, .5, null, 1000, 4, new double[] { 10, 20, 30, 40 });
+			var mfsk = new MFSK_Modulation(10, 40, sampleRate, 100, .5, null, 1000, 4, new double[] { 10, 20, 30, 40 }, new byte[] { 0, 1, 2, 3 });
 			double[] waveform = mfsk.ModulateBits();
 			writeToCSV(waveform, "FSK_ModulateBitsTest");
 		}
@@ -35,7 +35,7 @@ namespace InverseBeamforming.Tests
 		public void DemodulateWaveformTest()
 		{
 			var sampleRate = 1000;
-			var mfsk = new MFSK_Modulation(10, 40, sampleRate, 100, .5, null, 1000, 4, new double[] { 10, 20, 30, 40 });
+			var mfsk = new MFSK_Modulation(10, 40, sampleRate, 100, .5, null, 1000, 4, new double[] { 10, 20, 30, 40 }, new byte[] { 0, 1, 2, 3 });
 
 			byte[] inbits = mfsk.GenerateRandomBits();
 			double[] waveform = mfsk.ModulateBits(inbits);
