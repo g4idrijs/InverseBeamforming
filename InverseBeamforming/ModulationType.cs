@@ -4,7 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Reactive.Linq;
+using System.IO;
 
+/// <summary>
+/// Contains all the components necesary to perform simulations regaurding digital communications systems
+/// and inverse beamforming
+/// </summary>
 namespace InverseBeamforming
 {
 	/// <summary>
@@ -12,10 +18,97 @@ namespace InverseBeamforming
 	/// </summary>
 	public partial class Modulations
 	{
+
+		/// <summary>
+		/// Describes the current state of the simulation
+		/// </summary>
+		public struct IntermediateSimResults
+		{
+			/// <summary>
+			/// Total bit errors produced already
+			/// </summary>
+			public int TotalErrors;
+
+			/// <summary>
+			/// Number of bit errors during this iteration of the simulation
+			/// </summary>
+			public int NumberErrorsThisIteration;
+
+			/// <summary>
+			/// Total number of bits simulated so far
+			/// </summary>
+			public int TotalBitsSimulated;
+
+			/// <summary>
+			/// Bit error rate of the simulation so far
+			/// </summary>
+			public double BitErrorRate
+			{ get { return (double)TotalErrors / TotalBitsSimulated; } }
+
+			/// <summary>
+			/// Total errors remaining before the simulation is complete
+			/// </summary>
+			public int TotalErrorsRemaining;
+
+			/// <summary>
+			/// Percentage of the total errors required to end the simulation
+			/// </summary>
+			public double PercentErrorHad
+			{ get { return (double)TotalErrors / (TotalErrors + TotalErrorsRemaining); } }
+
+			/// <summary>
+			/// Constructs an instance of the IntermediateSimResults Structure
+			/// </summary>
+			/// <param name="totalErrors">Total number of error occured in the simulation</param>
+			/// <param name="numberErrorsThisIteration">Total number of errors in this iteration</param>
+			/// <param name="totalBitsSimulated">Total number of bits simulated so far</param>
+			/// <param name="totalErrorsRemaining">Total number of errors remaining</param>
+			public IntermediateSimResults(int totalErrors, int numberErrorsThisIteration, int totalBitsSimulated, int totalErrorsRemaining)
+			{
+				TotalErrors = totalErrors;
+				NumberErrorsThisIteration = numberErrorsThisIteration;
+				TotalBitsSimulated = totalBitsSimulated;
+				TotalErrorsRemaining = totalErrorsRemaining;
+			}
+		}
+
+		/// <summary>
+		/// Describes the final state of the simulation
+		/// </summary>
+		public struct FinalSimResults
+		{
+			/// <summary>
+			/// Total bit errors produced already
+			/// </summary>
+			public int TotalErrors;
+
+			/// <summary>
+			/// Total number of bits simulated so far
+			/// </summary>
+			public int TotalBitsSimulated;
+
+			/// <summary>
+			/// Bit error rate of the simulation so far
+			/// </summary>
+			public double BitErrorRate
+			{ get { return (double)TotalErrors / TotalBitsSimulated; } }
+
+			/// <summary>
+			/// Constructs an instance of the IntermediateSimResults Structure
+			/// </summary>
+			/// <param name="totalErrors">Total number of error occured in the simulation</param>
+			/// <param name="totalBitsSimulated">Total number of bits simulated so far</param>
+			public FinalSimResults(int totalErrors, int totalBitsSimulated)
+			{
+				TotalErrors = totalErrors;
+				TotalBitsSimulated = totalBitsSimulated;
+			}
+		}
+
 		/// <summary>
 		/// Defines an interface that allows multiple modulation types to be created
 		/// </summary>
-		public abstract class ModulationType : I_SpreadingCode
+		public abstract class ModulationType : I_SpreadingCode, IObservable<IntermediateSimResults>
 		{
 			/// <summary>
 			/// String containing the type of modulation used
@@ -202,11 +295,17 @@ namespace InverseBeamforming
 			protected byte[] _bitsToCommunicationsSymbols;
 
 			/// <summary>
+			/// Provides a list to hold the suscribers of simulation events
+			/// </summary>
+			List<IObserver<IntermediateSimResults>> observers;
+
+			/// <summary>
 			/// Creates a new instance of the ModulationType class with seed as the seed for the RNG
 			/// </summary>
 			/// <param name="seed">Seed to initialize the RNG</param>
 			public ModulationType(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform, int M)
 			{
+				observers = new List<IObserver<IntermediateSimResults>>();
 				this._rng = new Random(seed);
 				this.CarrierFrequency = carrierFrequency;
 				this.SampleRate = samplingRate;
@@ -644,6 +743,288 @@ namespace InverseBeamforming
 				});
 				return bers;
 			}
+
+			/// <summary>
+			/// Provides a way to unsubscribe from the simulation updates
+			/// </summary>
+			private class Unsubscriber : IDisposable
+			{
+				/// <summary>
+				/// List of observers of the updates
+				/// </summary>
+				private List<IObserver<IntermediateSimResults>> _observers;
+				
+				/// <summary>
+				/// Observer of the updates
+				/// </summary>
+				private IObserver<IntermediateSimResults> _observer;
+
+				/// <summary>
+				/// Construct a new instance of the Unsubscriber class
+				/// </summary>
+				/// <param name="observers">List of observers of the simulation updates</param>
+				/// <param name="observer">New observer of the simulation updates</param>
+				public Unsubscriber(List<IObserver<IntermediateSimResults>> observers, IObserver<IntermediateSimResults> observer)
+				{
+					this._observers = observers;
+					this._observer = observer;
+				}
+
+				/// <summary>
+				/// Dispose of the observer from the list
+				/// </summary>
+				public void Dispose()
+				{
+					//If the list isn't null, remove the observer from the list
+					if (! (_observer==null))
+					{
+						_observers.Remove(_observer);
+					}
+				}
+			}
+
+			/// <summary>
+			/// Subscribe to the simulation updates
+			/// </summary>
+			/// <param name="observer">New oberver of the simulation updates</param>
+			/// <returns>An interface detailing how to unsubscribe from the updates</returns>
+			public IDisposable Subscribe(IObserver<IntermediateSimResults> observer)
+			{
+				//If the observer is not already in the list of observers, add it
+				if (!observers.Contains(observer))
+					observers.Add(observer);
+
+				//Return an Unsubscriber
+				return new Unsubscriber(observers, observer);
+			}
+
+			/// <summary>
+			/// Runs a simulation that reports its progress
+			/// </summary>
+			/// <param name="numberToGetWrongEventually">Number of bit errors to simulate to</param>
+			/// <param name="noisePower">Power of the AWGN added to the signals</param>
+			/// <returns>Final results of the simulation</returns>
+			public FinalSimResults RunSimpleSimulationObservable(int numberToGetWrongEventually, double noisePower)
+			{
+				byte[] inbits;
+				double[] waveform;
+				byte[] outbits;
+
+				int numberWrongThisIteration = 0;
+				int totalNumWrong = 0, totalBitsSimulated = 0;
+
+				foreach (var obs in observers)
+				{
+
+					(obs as IntermediateSimResultsReporter).OnStart();
+				}
+
+				//Loop while there haven't been enough bit estimation errors
+				while (totalNumWrong < numberToGetWrongEventually)
+					{
+						//Generate Random bits
+						inbits = GenerateRandomBits();
+
+						//Modulate the bits
+						waveform = ModulateBits(inbits);
+
+						//Add noise to the waveform
+						AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
+
+						//Demodulate the waveform+noise
+						outbits = CorrelationReceiver(waveform);
+
+						//Get the total number of bits that were estimated wrongly
+						numberWrongThisIteration= numberDifferentBits(inbits, outbits);
+						totalNumWrong += numberWrongThisIteration;
+
+						//Update the total number of bits simulated
+						totalBitsSimulated += this._numberSymbolsPerWaveform;
+
+						if (numberWrongThisIteration!=0)
+						{
+							foreach (var obs in observers)
+							{
+								obs.OnNext(new IntermediateSimResults(totalNumWrong, numberWrongThisIteration, totalBitsSimulated, numberToGetWrongEventually - totalNumWrong));
+							}
+						}
+					}
+
+				//Simulation is done, inform the observers
+				foreach (var obs in observers)
+				{
+					obs.OnCompleted();
+				}
+
+				return new FinalSimResults( totalNumWrong, totalBitsSimulated);
+			}
+
+			/// <summary>
+			/// Runs a simulation that reports its progress
+			/// </summary>
+			/// <param name="numberToGetWrongEventually">Number of bit errors to simulate to</param>
+			/// <param name="noisePower">Power of the AWGN added to the signals</param>
+			/// <returns>Final results of the simulation</returns>
+			public FinalSimResults RunFIRFilterSimulationObservable(int numberToGetWrongEventually, double noisePower)
+			{
+				byte[] inbits;
+				double[] waveform;
+				byte[] outbits;
+
+				int numberWrongThisIteration = 0;
+				int totalNumWrong = 0, totalBitsSimulated = 0;
+
+				//Call the OnStart function for each observer
+				foreach (var obs in observers)
+				{
+					(obs as IntermediateSimResultsReporter).OnStart();
+				}
+				
+				//Loop while there haven't been enough bit estimation errors
+				while (totalNumWrong < numberToGetWrongEventually)
+				{
+					//Generate Random bits
+					inbits = GenerateRandomBits();
+
+					//Modulate the bits
+					waveform = ModulateBits(inbits);
+
+					//Add noise to the waveform
+					AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
+
+					//Filter the waveform
+					waveform = FIR_Filter(waveform);
+
+					//Demodulate the waveform+noise
+					outbits = CorrelationReceiver(waveform);
+
+					//Get the total number of bits that were estimated wrongly
+					numberWrongThisIteration = numberDifferentBits(inbits, outbits);
+					totalNumWrong += numberWrongThisIteration;
+
+					//Update the total number of bits simulated
+					totalBitsSimulated += this._numberSymbolsPerWaveform;
+
+					//If there were any bit errors this iteration
+					if (numberWrongThisIteration != 0)
+					{
+						//Call the OnNext function for each observer
+						foreach (var obs in observers)
+						{
+							obs.OnNext(new IntermediateSimResults(totalNumWrong, numberWrongThisIteration, totalBitsSimulated, numberToGetWrongEventually - totalNumWrong));
+						}
+					}
+				}
+
+				//Simulation is done, inform the observers
+				foreach (var obs in observers)
+				{
+					obs.OnCompleted();
+				}
+
+				//Return the final simulation results
+				return new FinalSimResults(totalNumWrong, totalBitsSimulated);
+			}
+
+			/// <summary>
+			/// Defines a class that reports the results of the simulation in real time
+			/// </summary>
+			public class IntermediateSimResultsReporter : IObserver<IntermediateSimResults>
+			{
+				/// <summary>
+				/// Starting time of the simulation
+				/// </summary>
+				private DateTime startTime;
+				/// <summary>
+				/// Ending time of the simulation
+				/// </summary>
+				private DateTime endTime;
+
+				/// <summary>
+				/// Hold the information needed to unsubscribe from the simulation
+				/// </summary>
+				private IDisposable unsubscriber;
+
+				/// <summary>
+				/// Hold a filename to write the results simultanesouly
+				/// </summary>
+				private string _filename;
+
+				/// <summary>
+				/// Construct a new instance of the class with a file to write the results to
+				/// </summary>
+				/// <param name="filename">Name of the file to write the results to</param>
+				public IntermediateSimResultsReporter(string filename)
+				{
+					this._filename = filename;
+				}
+
+				/// <summary>
+				/// Subscribe to receive the updates from the simulation
+				/// </summary>
+				/// <param name="provider">Simulation OBservable</param>
+				public virtual void Subscribe(IObservable<IntermediateSimResults> provider)
+				{
+					//Provide information to unsubscribe from the observable
+					unsubscriber = provider.Subscribe(this);
+				}
+
+				/// <summary>
+				/// Unsubscribe
+				/// </summary>
+				public virtual void Unsubscribe()
+				{
+					unsubscriber.Dispose();
+				}
+
+				/// <summary>
+				/// Sets up the file to log the simulation
+				/// </summary>
+				public virtual void OnStart()
+				{
+					//Get the starting time
+					startTime = DateTime.Now;
+
+					//Write the start time to the simulation
+					File.WriteAllText(_filename, "Start of simulation. Time: " + startTime.ToLongDateString() + " " + startTime.ToLongTimeString() + Environment.NewLine);
+				}
+
+				/// <summary>
+				/// Function to be run when the simulation is done
+				/// </summary>
+				public virtual void OnCompleted()
+				{
+					//Get the end time of the simulation
+					endTime = DateTime.Now;
+
+					//Append some timing information to the end
+					File.AppendAllText(_filename, String.Format("Completed simulation at {0} {1}.\n", endTime.ToLongDateString(), endTime.ToLongTimeString()));
+					File.AppendAllText(_filename, "The simulation took: " + (endTime - startTime).ToString());
+				}
+
+				/// <summary>
+				/// Function gets called when there is an error in the simulation
+				/// </summary>
+				/// <param name="error"></param>
+				public virtual void OnError(Exception error)
+				{
+					endTime = DateTime.Now;
+					File.AppendAllText(_filename, String.Format("An error was encoutered at {0} {1}.\n\n{1}", endTime.ToLongDateString(), endTime.ToLongTimeString(),error.Message));
+				}
+
+				/// <summary>
+				/// Function gets called when an update to the simulation is pushed
+				/// </summary>
+				/// <param name="isr">Struct holding the intermediate simulation results</param>
+				public virtual void OnNext(IntermediateSimResults isr)
+				{
+					//Write the information to the log file
+					File.AppendAllText(_filename, String.Format("{0} {1} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: 0.00}, Percent errors found: {6: 0.00}\n", DateTime.Now.ToLongDateString(), DateTime.Now.ToLongTimeString(), isr.TotalErrors, isr.NumberErrorsThisIteration, isr.TotalBitsSimulated, isr.BitErrorRate, isr.PercentErrorHad*100));
+				}
+				
+			}
+
+			 
 
 			//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			//Spreading Codes
