@@ -13,7 +13,7 @@ namespace InverseBeamforming.Tests
 	[TestClass()]
 	public class MPSK_ModulationTests
 	{
-		private string _testFileDumpDirec = @"C:\Users\vikin\OneDrive\AFIT\Thesis\Code\C_Sharp\InvBeamLib\InverseBeamforming\TestFileDump\MPSK" + Path.DirectorySeparatorChar;
+		private string _testFileDumpDirec = @"C:\Users\vikin_000\OneDrive\AFIT\Thesis\Code\C_Sharp\InvBeamLib\InverseBeamforming\TestFileDump\MPSK" + Path.DirectorySeparatorChar;
 
 		[TestMethod()]
 		public void MPSK_ModulationTest()
@@ -40,9 +40,24 @@ namespace InverseBeamforming.Tests
 			var signalPower = 1;
 
 
-			var mpsk = new MPSK_Modulation(carrierFrequency, sampleRate, seed, samplesPerSymbol, signalPower, null, 2, 4, new double[] { 0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4 }, new byte[] { 0, 1, 2, 3 });
+			var mpsk = new MPSK_Modulation(carrierFrequency, sampleRate, seed, samplesPerSymbol, signalPower, null, 2, 2, new double[] { 0, Math.PI }, new byte[] { 0, 1});
 			double[] waveform = mpsk.ModulateBits(new byte[] { 0, 1 });
-			writeToCSV(waveform, "MPSK_ModulateBitsTest");
+			writeToCSV(waveform, "ModulatedBitsFor_qa_BPSK_mod");
+		}
+
+		[TestMethod()]
+		public void ModulateBits_GenerateWaveformFor_qa_MPSK_Mod_Test()
+		{
+			var seed = 40;
+			var sampleRate = 100;
+			var carrierFrequency = 10;
+			var samplesPerSymbol = 10;
+			var signalPower = 1;
+
+
+			var mpsk = new MPSK_Modulation(carrierFrequency, sampleRate, seed, samplesPerSymbol, signalPower, null, 4, 4, new double[] { 0, Math.PI / 2, Math.PI , 3 * Math.PI / 2 }, new byte[] { 0, 1, 2, 3 });
+			double[] waveform = mpsk.ModulateBits(new byte[] { 0, 1, 2, 3 });
+			writeToCSV(waveform, "ModulatedBitsFor_qa_MPSK_mod");
 		}
 
 		[TestMethod()]

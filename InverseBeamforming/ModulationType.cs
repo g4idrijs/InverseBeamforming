@@ -738,11 +738,16 @@ namespace InverseBeamforming
 				//Loop through each of the noise powers
 				Parallel.For(0, noisePowers.Length - 1, i =>
 				{
-				//yield return the BER from that simulation
-				bers[i] = RunSimulationOneNoisePowerRealFiltering(numberToGetWrongEventually, noisePowers[i]);
+					//yield return the BER from that simulation
+					bers[i] = RunSimulationOneNoisePowerRealFiltering(numberToGetWrongEventually, noisePowers[i]);
 				});
 				return bers;
 			}
+
+
+			//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			//Observable Simulation Runs
+			//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 			/// <summary>
 			/// Provides a way to unsubscribe from the simulation updates
@@ -1009,7 +1014,7 @@ namespace InverseBeamforming
 				public virtual void OnError(Exception error)
 				{
 					endTime = DateTime.Now;
-					File.AppendAllText(_filename, String.Format("An error was encoutered at {0} {1}.\n\n{1}", endTime.ToLongDateString(), endTime.ToLongTimeString(),error.Message));
+					File.AppendAllText(_filename, String.Format("An error was encoutered at {0} {1}.\n\n{2}", endTime.ToLongDateString(), endTime.ToLongTimeString(), error.Message));
 				}
 
 				/// <summary>
