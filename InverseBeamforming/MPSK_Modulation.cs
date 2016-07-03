@@ -4,6 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Contains all the components necesary to perform simulations regaurding digital communications systems
+/// and inverse beamforming
+/// </summary>
 namespace InverseBeamforming
 {
 	/// <summary>
@@ -11,6 +15,9 @@ namespace InverseBeamforming
 	/// </summary>
 	public partial class Modulations
 	{
+		/// <summary>
+		/// Provide methods to complete MPSK modulation
+		/// </summary>
 		public class MPSK_Modulation : ModulationType
 		{
 			/// <summary>
@@ -43,7 +50,7 @@ namespace InverseBeamforming
 			/// <param name="numberSymbolsPerWaveform">Number of symbols created in each waveform</param>
 			/// <param name="M">Number of unique communications symbols</param>
 			public MPSK_Modulation(double carrierFrequency, int samplingRate, int seed, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform, int M, double[] phases, byte[] bitsToCommunicationsSymbols)
-				: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, M)
+				: base(carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, M)
 			{
 				this.Phases = phases;
 				var pi2 = 2 * Math.PI * carrierFrequency / samplingRate;
@@ -60,6 +67,23 @@ namespace InverseBeamforming
 
 				//Set the bit to communication symbol matching
 				this._bitsToCommunicationsSymbols = bitsToCommunicationsSymbols;
+			}
+
+			/// <summary>
+			/// Copy Constructor
+			/// </summary>
+			/// <param name="old">Old class to copy</param>
+			public MPSK_Modulation(ModulationType old) : base(old)
+			{}
+
+			/// <summary>
+			/// Copy Constructor
+			/// </summary>
+			/// <param name="old">Old class to copy</param>
+			public MPSK_Modulation(MPSK_Modulation old) : base(old)
+			{
+				this._phases = old._phases;
+				this._bitsToCommunicationsSymbols = old._bitsToCommunicationsSymbols;
 			}
 
 			/// <summary>

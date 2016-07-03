@@ -4,6 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Contains all the components necesary to perform simulations regaurding digital communications systems
+/// and inverse beamforming
+/// </summary>
 namespace InverseBeamforming
 {
 	/// <summary>
@@ -11,6 +15,9 @@ namespace InverseBeamforming
 	/// </summary>
 	public partial class Modulations
 	{
+		/// <summary>
+		/// Provide a class to do MFSK modulation
+		/// </summary>
 		public class MFSK_Modulation : ModulationType
 		{
 			/// <summary>
@@ -39,7 +46,7 @@ namespace InverseBeamforming
 			/// <param name="M">Number of unique communications symbols</param>
 			/// <param name="frequencies">Frequencies used for each communications symbol</param>
 			public MFSK_Modulation(int seed, double carrierFrequency, int samplingRate, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform, int M, double[] frequencies, byte[] bitsToCommunicationsSymbols)
-				: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, M)
+				: base(carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, M)
 			{
 				//Set up the frequencies to be used to generate the reference waveforms
 				this.Frequencies = frequencies;
@@ -60,6 +67,13 @@ namespace InverseBeamforming
 				//Set the bit to communication symbol matching
 				this._bitsToCommunicationsSymbols = bitsToCommunicationsSymbols;
 			}
+
+			/// <summary>
+			/// Copy Constructor
+			/// </summary>
+			/// <param name="old"></param>
+			public MFSK_Modulation(ModulationType old) : base(old)
+			{}
 
 			/// <summary>
 			/// Provides MFSK modulation for a given set of bits

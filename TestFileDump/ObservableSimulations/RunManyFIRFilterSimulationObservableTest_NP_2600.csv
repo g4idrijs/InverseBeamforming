@@ -1,0 +1,12 @@
+Start of simulation. Time: Saturday, July 2, 2016 10:01:18 PM
+Simulation: 2600 07/02/2016 22:01:19:36476 Total Errors:    60, Errors this iteration:    60, Total Bits Simulated:       100, Bit Error Rate:  0.60, Percent errors found:  12.00
+Simulation: 2600 07/02/2016 22:01:19:79605 Total Errors:   130, Errors this iteration:    70, Total Bits Simulated:       200, Bit Error Rate:  0.65, Percent errors found:  26.00
+Simulation: 2600 07/02/2016 22:01:20:23787 Total Errors:   200, Errors this iteration:    70, Total Bits Simulated:       300, Bit Error Rate:  0.67, Percent errors found:  40.00
+Simulation: 2600 07/02/2016 22:01:20:68167 Total Errors:   267, Errors this iteration:    67, Total Bits Simulated:       400, Bit Error Rate:  0.67, Percent errors found:  53.40
+Simulation: 2600 07/02/2016 22:01:21:11401 Total Errors:   337, Errors this iteration:    70, Total Bits Simulated:       500, Bit Error Rate:  0.67, Percent errors found:  67.40
+Simulation: 2600 07/02/2016 22:01:21:55331 Total Errors:   406, Errors this iteration:    69, Total Bits Simulated:       600, Bit Error Rate:  0.68, Percent errors found:  81.20
+Simulation: 2600 07/02/2016 22:01:21:99360 Total Errors:   477, Errors this iteration:    71, Total Bits Simulated:       700, Bit Error Rate:  0.68, Percent errors found:  95.40
+Simulation: 2600 07/02/2016 22:01:22:43444 Total Errors:   540, Errors this iteration:    63, Total Bits Simulated:       800, Bit Error Rate:  0.68, Percent errors found:  108.00
+Completed simulation at Saturday, July 2, 2016 10:01:22 PM.
+
+The simulation took: 00:00:03.5615719

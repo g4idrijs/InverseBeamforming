@@ -52,7 +52,8 @@ namespace InverseBeamforming.Tests
 		{
 			var bpsk = new BPSK_Modulation(10, 100, 1, 20, .5, null,1000);
 
-			byte[] inbits = bpsk.GenerateRandomBits();
+			byte[] inbits=new byte[1000];
+			bpsk.GenerateRandomBits(ref inbits);
 			double[] waveform = bpsk.ModulateBits(inbits);
 			byte[] outbits = bpsk.CorrelationReceiver(waveform);
 
@@ -83,7 +84,8 @@ namespace InverseBeamforming.Tests
 			var bpsk = new BPSK_Modulation(10, 100, 1, 20, 1, null,1000);
 
 			int numTests = 10;
-			byte[] inbits = bpsk.GenerateRandomBits();
+			byte[] inbits=new byte[1000];
+			bpsk.GenerateRandomBits(ref inbits);
 			double[] waveform = bpsk.ModulateBits(inbits);
 			double[] noisePower = new double[numTests];
 			byte[] outbits = bpsk.CorrelationReceiver(waveform);
@@ -92,7 +94,7 @@ namespace InverseBeamforming.Tests
 			int[] temp;
 			for(int i=0; i< numTests; i++)
 			{
-				inbits = bpsk.GenerateRandomBits();
+				bpsk.GenerateRandomBits(ref inbits);
 				waveform = bpsk.ModulateBits(inbits);
 				noisePower[i] = bpsk.AdditiveWhiteGaussianNoise(ref waveform, 1);
 				outbits = bpsk.CorrelationReceiver(waveform);

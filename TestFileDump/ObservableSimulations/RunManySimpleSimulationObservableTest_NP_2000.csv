@@ -1,0 +1,19 @@
+Start of simulation. Time: Saturday, July 2, 2016 10:01:22 PM
+Simulation: 2000 07/02/2016 22:01:22:66159 Total Errors:    37, Errors this iteration:    37, Total Bits Simulated:       100, Bit Error Rate:  0.37, Percent errors found:  7.40
+Simulation: 2000 07/02/2016 22:01:22:85122 Total Errors:    73, Errors this iteration:    36, Total Bits Simulated:       200, Bit Error Rate:  0.37, Percent errors found:  14.60
+Simulation: 2000 07/02/2016 22:01:23:05936 Total Errors:   111, Errors this iteration:    38, Total Bits Simulated:       300, Bit Error Rate:  0.37, Percent errors found:  22.20
+Simulation: 2000 07/02/2016 22:01:23:26800 Total Errors:   140, Errors this iteration:    29, Total Bits Simulated:       400, Bit Error Rate:  0.35, Percent errors found:  28.00
+Simulation: 2000 07/02/2016 22:01:23:48064 Total Errors:   179, Errors this iteration:    39, Total Bits Simulated:       500, Bit Error Rate:  0.36, Percent errors found:  35.80
+Simulation: 2000 07/02/2016 22:01:23:67877 Total Errors:   204, Errors this iteration:    25, Total Bits Simulated:       600, Bit Error Rate:  0.34, Percent errors found:  40.80
+Simulation: 2000 07/02/2016 22:01:23:87940 Total Errors:   244, Errors this iteration:    40, Total Bits Simulated:       700, Bit Error Rate:  0.35, Percent errors found:  48.80
+Simulation: 2000 07/02/2016 22:01:24:10756 Total Errors:   279, Errors this iteration:    35, Total Bits Simulated:       800, Bit Error Rate:  0.35, Percent errors found:  55.80
+Simulation: 2000 07/02/2016 22:01:24:31169 Total Errors:   313, Errors this iteration:    34, Total Bits Simulated:       900, Bit Error Rate:  0.35, Percent errors found:  62.60
+Simulation: 2000 07/02/2016 22:01:24:62190 Total Errors:   350, Errors this iteration:    37, Total Bits Simulated:      1000, Bit Error Rate:  0.35, Percent errors found:  70.00
+Simulation: 2000 07/02/2016 22:01:24:82454 Total Errors:   386, Errors this iteration:    36, Total Bits Simulated:      1100, Bit Error Rate:  0.35, Percent errors found:  77.20
+Simulation: 2000 07/02/2016 22:01:25:04718 Total Errors:   421, Errors this iteration:    35, Total Bits Simulated:      1200, Bit Error Rate:  0.35, Percent errors found:  84.20
+Simulation: 2000 07/02/2016 22:01:25:26783 Total Errors:   455, Errors this iteration:    34, Total Bits Simulated:      1300, Bit Error Rate:  0.35, Percent errors found:  91.00
+Simulation: 2000 07/02/2016 22:01:25:47747 Total Errors:   487, Errors this iteration:    32, Total Bits Simulated:      1400, Bit Error Rate:  0.35, Percent errors found:  97.40
+Simulation: 2000 07/02/2016 22:01:25:67861 Total Errors:   531, Errors this iteration:    44, Total Bits Simulated:      1500, Bit Error Rate:  0.35, Percent errors found:  106.20
+Completed simulation at Saturday, July 2, 2016 10:01:25 PM.
+
+The simulation took: 00:00:03.2161476

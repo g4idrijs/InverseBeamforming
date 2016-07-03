@@ -4,8 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Contains all the components necesary to perform simulations regaurding digital communications systems
+/// and inverse beamforming
+/// </summary>
 namespace InverseBeamforming
 {
+	/// <summary>
+	/// Provides useful extension methods for common use cases
+	/// </summary>
 	public static class ExtensionMethods
 	{
 		/// <summary>
@@ -82,6 +89,24 @@ namespace InverseBeamforming
 		{
 			//The standard deviation is just the square root of the variance
 			return Math.Sqrt(doubleArray.Variance(mean));
+		}
+
+		/// <summary>
+		/// Clones the array assuming it isn't a null reference
+		/// </summary>
+		/// <typeparam name="T">Type of the array to clone</typeparam>
+		/// <param name="arr">Array to clone</param>
+		/// <returns>Null if arr is a null reference, or a clone of the array if it is not a null reference</returns>
+		public static T[] NullCloneSafely<T>(this T[] arr)
+		{
+			if(arr==null)
+			{
+				return null;
+			}
+			else
+			{
+				return (T[])arr.Clone();
+			}
 		}
 	}
 }

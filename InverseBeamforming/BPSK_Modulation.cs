@@ -4,6 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Contains all the components necesary to perform simulations regaurding digital communications systems
+/// and inverse beamforming
+/// </summary>
 namespace InverseBeamforming
 {
 	/// <summary>
@@ -17,6 +21,13 @@ namespace InverseBeamforming
 		public class BPSK_Modulation : ModulationType
 		{
 			/// <summary>
+			/// Copy Constructor
+			/// </summary>
+			/// <param name="old">Old instance to copy</param>
+			public BPSK_Modulation(ModulationType old) : base(old)
+			{}
+
+			/// <summary>
 			/// Create an instance with the given parameters
 			/// </summary>
 			/// <param name="carrierFrequency">Carrier frequency of any resulting modulated waveforms</param>
@@ -27,7 +38,7 @@ namespace InverseBeamforming
 			/// <param name="firCoefficients">Coefficients of an FIR filter to filter with before bit estimation.</param>
 			/// <param name="numberSymbolsPerWaveform">Number of symbols created in each waveform</param>
 			public BPSK_Modulation(double carrierFrequency, int samplingRate, int seed, int samplesPerSymbol, double signalPower, double[] firCoefficients, int numberSymbolsPerWaveform)
-				: base(seed, carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, 2)
+				: base(carrierFrequency, samplingRate, samplesPerSymbol, signalPower, firCoefficients, numberSymbolsPerWaveform, 2)
 			{
 				var pi2 = 2 * Math.PI * carrierFrequency / samplingRate;
 

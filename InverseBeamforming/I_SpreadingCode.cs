@@ -4,6 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+/// <summary>
+/// Contains all the components necesary to perform simulations regaurding digital communications systems
+/// and inverse beamforming
+/// </summary>
 namespace InverseBeamforming
 {
 	/// <summary>

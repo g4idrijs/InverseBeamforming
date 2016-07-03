@@ -37,7 +37,8 @@ namespace InverseBeamforming.Tests
 			var sampleRate = 1000;
 			var mfsk = new MFSK_Modulation(10, 40, sampleRate, 100, .5, null, 1000, 4, new double[] { 10, 20, 30, 40 }, new byte[] { 0, 1, 2, 3 });
 
-			byte[] inbits = mfsk.GenerateRandomBits();
+			byte[] inbits = new byte[1000];
+			mfsk.GenerateRandomBits(ref inbits);
 			double[] waveform = mfsk.ModulateBits(inbits);
 			byte[] outbits = mfsk.CorrelationReceiver(waveform);
 			writeToCSV(waveform, "FSK_Modulation",sampleRate);

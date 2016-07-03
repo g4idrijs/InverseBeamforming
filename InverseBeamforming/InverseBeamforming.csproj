@@ -57,11 +57,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BPSK_Modulation.cs" />
+    <Compile Include="DC.cs" />
     <Compile Include="ExtensionMethods.cs" />
+    <Compile Include="FinalSimResults.cs" />
+    <Compile Include="IntermediateSimResults.cs" />
     <Compile Include="MFSK_Modulation.cs" />
     <Compile Include="ModulationType.cs" />
     <Compile Include="I_SpreadingCode.cs" />
     <Compile Include="MPSK_Modulation.cs" />
+    <Compile Include="MultipleSimulations.cs" />
+    <Compile Include="SimulationReporter.cs" />
+    <Compile Include="SimulationTracker.cs" />
+    <Compile Include="SingleSimulation.cs" />
     <Compile Include="Positions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
