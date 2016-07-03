@@ -101,11 +101,11 @@ namespace InverseBeamforming
 				var simulations = new SingleSimulation[_noisePowers.Length];
 				Modulations.ModulationType modulation;
 
-				var reporters = new SimulationReporter[_noisePowers.Length];
+				var reporters = new SimulationLogFileReporter[_noisePowers.Length];
 				for (int i = 0; i < _noisePowers.Length; i++)
 				{
 					provider[i] = new SimulationTracker();
-					reporters[i] = new SimulationReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv");
+					reporters[i] = new SimulationLogFileReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv");
 					reporters[i].Subscribe(provider[i]);
 				}
 
@@ -156,11 +156,11 @@ namespace InverseBeamforming
 				var simulations = new SingleSimulation[_noisePowers.Length];
 				Modulations.ModulationType modulation;
 
-				var reporters = new SimulationReporter[_noisePowers.Length];
+				var reporters = new SimulationLogFileReporter[_noisePowers.Length];
 				for (int i = 0; i < _noisePowers.Length; i++)
 				{
 					provider[i] = new SimulationTracker();
-					reporters[i] = new SimulationReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv");
+					reporters[i] = new SimulationLogFileReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv");
 					reporters[i].Subscribe(provider[i]);
 				}
 

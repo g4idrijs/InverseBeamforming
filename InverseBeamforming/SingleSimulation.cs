@@ -34,14 +34,14 @@ namespace InverseBeamforming
 			/// <summary>
 			/// Reporter used to report progress on the simulation
 			/// </summary>
-			private SimulationReporter _reporter;
+			private SimulationLogFileReporter _reporter;
 
 			/// <summary>
 			/// Construct a new simulation
 			/// </summary>
 			/// <param name="mod">Modulation class that contains most of the parameters of the simulation</param>
 			/// <param name="reporter">Reporter to use to report progress on the simulation</param>
-			public SingleSimulation(Modulations.ModulationType mod, SimulationReporter reporter)
+			public SingleSimulation(Modulations.ModulationType mod, SimulationLogFileReporter reporter)
 			{
 				_modOriginal = mod;
 				_reporter = reporter;

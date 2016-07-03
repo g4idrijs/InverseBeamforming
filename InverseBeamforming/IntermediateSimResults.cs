@@ -50,7 +50,7 @@ namespace InverseBeamforming
 			/// Percentage of the total errors required to end the simulation
 			/// </summary>
 			public double PercentErrorHad
-			{ get { return (double)TotalErrors / (TotalErrors + TotalErrorsRemaining); } }
+			{ get { return (double)TotalErrors*100.0 / (TotalErrors + TotalErrorsRemaining); } }
 
 			public string SimulationName { get; set; }
 

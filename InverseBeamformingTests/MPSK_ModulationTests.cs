@@ -89,7 +89,7 @@ namespace InverseBeamforming.Tests
 
 			string filename = "RunSimpleSimulationObservableTest";
 			filename = _testFileDumpDirec + filename + ".csv";
-			var rep = new Simulations.SimulationReporter(filename);
+			var rep = new Simulations.SimulationLogFileReporter(filename);
 			var sim = new Simulations.SingleSimulation(mpsk, rep);
 			sim.RunSimpleSimulationObservable(500, 1700);
 		}
@@ -107,7 +107,7 @@ namespace InverseBeamforming.Tests
 
 			string filename = "RunFIRFilterSimulationObservableTest";
 			filename = _testFileDumpDirec + filename + ".csv";
-			var rep = new Simulations.SimulationReporter(filename);
+			var rep = new Simulations.SimulationLogFileReporter(filename);
 			var sim = new Simulations.SingleSimulation(mpsk, rep);
 			sim.RunFIRFilterSimulationObservable(500, 1700);
 		}

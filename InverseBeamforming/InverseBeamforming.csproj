@@ -66,7 +66,8 @@
     <Compile Include="I_SpreadingCode.cs" />
     <Compile Include="MPSK_Modulation.cs" />
     <Compile Include="MultipleSimulations.cs" />
-    <Compile Include="SimulationReporter.cs" />
+    <Compile Include="SimulationLogFileReporter.cs" />
+    <Compile Include="SimulationProgressBarReporter.cs" />
     <Compile Include="SimulationTracker.cs" />
     <Compile Include="SingleSimulation.cs" />
     <Compile Include="Positions.cs" />

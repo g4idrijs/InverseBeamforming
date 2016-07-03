@@ -19,7 +19,7 @@ namespace InverseBeamforming
 		/// <summary>
 		/// Class that describes the process of being subscribed to a simulation
 		/// </summary>
-		public class SimulationReporter : IObserver<SingleSimulation>
+		public class SimulationLogFileReporter : IObserver<SingleSimulation>
 		{
 			/// <summary>
 			/// Information to unsubscribe from the simulation
@@ -45,7 +45,7 @@ namespace InverseBeamforming
 			/// Construct a new instances of the SimulationReporter class
 			/// </summary>
 			/// <param name="logFilename">Name of the logfile to use for this reporter</param>
-			public SimulationReporter(string logFilename)
+			public SimulationLogFileReporter(string logFilename)
 			{
 				this._logFilename = logFilename;
 				System.IO.Directory.CreateDirectory(Path.GetDirectoryName(logFilename));
