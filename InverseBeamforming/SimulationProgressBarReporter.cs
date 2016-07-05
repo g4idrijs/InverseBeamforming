@@ -15,13 +15,19 @@ namespace InverseBeamforming
 		/// <summary>
 		/// Class that describes the process of being subscribed to a simulation
 		/// </summary>
-		public class SimulationProgressBarReporter : IObserver<SingleSimulation>
+		public class SimulationProgressBarReporter : SimulationReporter
 		{
+			/// <summary>
+			/// Event that indicates that the progress of the simulation has been updated
+			/// </summary>
 			public event SimulationProgressUpdated SimulationProgressBarUpdatedEvent;
-			public delegate void SimulationProgressUpdated(SimulationProgressBarReporter s, EventArgs e);
+			public delegate void SimulationProgressUpdated(SimulationProgressBarReporter s, ProgressUpdatedEventArgs e);
 
-			public event SimulationProgressUpdated SimulationErrorOccuredEvent;
-			public delegate void SimulationErrorOccured(SimulationProgressBarReporter s, EventArgs e);
+			/// <summary>
+			/// Event that indicates that an error has occured in the simulation
+			/// </summary>
+			public event SimulationErrorOccured SimulationErrorOccuredEvent;
+			public delegate void SimulationErrorOccured(SimulationProgressBarReporter s, ErrorOccuredEventArgs e);
 
 			/// <summary>
 			/// Percentage of the simulation that is completed
@@ -30,28 +36,18 @@ namespace InverseBeamforming
 			{
 				get { return this._progress; }
 			}
-			private double _progress;
+			protected double _progress;
 
 			/// <summary>
 			/// Length of time the simulation has been running, or if it is done, the length of time it was running.
 			/// </summary>
 			public TimeSpan LengthOfSimulation { get { return this._lengthOfSimulation; } }
-			private TimeSpan _lengthOfSimulation;
+			protected TimeSpan _lengthOfSimulation;
 
 			/// <summary>
-			/// Information to unsubscribe from the simulation
+			/// Instance name
 			/// </summary>
-			private IDisposable unsubscriber;
-
-			/// <summary>
-			/// Filename of the log file to write the intermediate results to
-			/// </summary>
-			private string _instName;
-
-			/// <summary>
-			/// Start and end times of the simulation
-			/// </summary>
-			private DateTime startTime, endTime;
+			protected string _instName;
 			
 			/// <summary>
 			/// Construct a new instances of the SimulationReporter class
@@ -62,21 +58,11 @@ namespace InverseBeamforming
 				this._instName = simName;
 				this._lengthOfSimulation = new TimeSpan(0, 0, 0);
 			}
-
-			/// <summary>
-			/// Subscribe to the simulation
-			/// </summary>
-			/// <param name="provider">Requesting observer of the simulation</param>
-			public virtual void Subscribe(IObservable<SingleSimulation> provider)
-			{
-				if (provider != null)
-					unsubscriber = provider.Subscribe(this);
-			}
-
+			
 			/// <summary>
 			/// Sets up the file to log the simulation
 			/// </summary>
-			public virtual void OnStart()
+			public override void OnStart()
 			{
 				//Get the starting time
 				startTime = DateTime.Now;
@@ -85,14 +71,15 @@ namespace InverseBeamforming
 				this.setProgressBar(0);
 
 				//Tell subscribers that the progress bar was updated
-				SimulationProgressBarUpdatedEvent(this, new EventArgs());
+				if(SimulationProgressBarUpdatedEvent!=null)
+					SimulationProgressBarUpdatedEvent(this, new ProgressUpdatedEventArgs(0,new TimeSpan(0)));
 			}
 
 			/// <summary>
 			/// Report the status of the simulation to the logfile
 			/// </summary>
 			/// <param name="sim">Simulation to report the status of</param>
-			public virtual void OnNext(SingleSimulation sim)
+			public override void OnNext(SingleSimulation sim)
 			{
 				//Get the intermediate results from the simulation
 				IntermediateSimResults isr = sim.isr;
@@ -102,23 +89,25 @@ namespace InverseBeamforming
 				this._lengthOfSimulation = DateTime.Now - startTime;
 
 				//Tell subscribers that the progress bar was updated
-				SimulationProgressBarUpdatedEvent(this, new EventArgs());
+				if (SimulationProgressBarUpdatedEvent != null)
+					SimulationProgressBarUpdatedEvent(this, new ProgressUpdatedEventArgs(isr.PercentErrorHad, this._lengthOfSimulation));
 			}
 
 			/// <summary>
 			/// Report an error in the simulation to the logfile
 			/// </summary>
 			/// <param name="error">Exception describing the error</param>
-			public virtual void OnError(Exception error)
+			public override void OnError(Exception error)
 			{
 				//Tell subscribers that an error occured
-				SimulationErrorOccuredEvent(this, new ErrorOccuredEventArgs(error));
+				if (SimulationErrorOccuredEvent != null)
+					SimulationErrorOccuredEvent(this, new ErrorOccuredEventArgs(error));
 			}
 
 			/// <summary>
 			/// Write completion information to the logfile and unsuscribe from the simulation
 			/// </summary>
-			public virtual void OnCompleted()
+			public override void OnCompleted()
 			{
 				//Get the end time of the simulation
 				endTime = DateTime.Now;
@@ -127,21 +116,13 @@ namespace InverseBeamforming
 				this._lengthOfSimulation = endTime - startTime;
 
 				//Tell subscribers that the progress bar was updated
-				SimulationProgressBarUpdatedEvent(this, new EventArgs());
+				if (SimulationProgressBarUpdatedEvent != null)
+					SimulationProgressBarUpdatedEvent(this, new ProgressUpdatedEventArgs(100,this._lengthOfSimulation));
 
 				//Unsubscribe from the simulation
 				this.Unsubscribe();
 			}
-
-			/// <summary>
-			/// Unsubscribe from the simulation
-			/// </summary>
-			public virtual void Unsubscribe()
-			{
-				if (unsubscriber != null)
-					unsubscriber.Dispose();
-			}
-
+			
 			/// <summary>
 			/// Private setter for the progress bar
 			/// </summary>
@@ -153,6 +134,26 @@ namespace InverseBeamforming
 				else
 					throw new ArgumentOutOfRangeException("Progress", "Progress must be a percentage between 0 and 100 inclusive.");
 			}
+		}
+	}
+
+	/// <summary>
+	/// Provides the basic progress of the simulation in an Event args inherited class
+	/// </summary>
+	public class ProgressUpdatedEventArgs : EventArgs
+	{
+		public double ProgressBar;
+		public TimeSpan LengthOfSimulation;
+
+		/// <summary>
+		/// Constructs event args that hold the new progress of the simulation, and the time spent simulating so far
+		/// </summary>
+		/// <param name="percentageWorkDone">Percentage of the simulation that is done so far</param>
+		/// <param name="LengthOfSimulationSoFar">Time spent simulating so far</param>
+		public ProgressUpdatedEventArgs(double percentageWorkDone, TimeSpan LengthOfSimulationSoFar)
+		{
+			ProgressBar = percentageWorkDone;
+			LengthOfSimulation = LengthOfSimulationSoFar;
 		}
 	}
 

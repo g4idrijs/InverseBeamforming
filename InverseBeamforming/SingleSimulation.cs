@@ -34,17 +34,17 @@ namespace InverseBeamforming
 			/// <summary>
 			/// Reporter used to report progress on the simulation
 			/// </summary>
-			private SimulationLogFileReporter _reporter;
+			protected List<SimulationReporter> _reporters;
 
 			/// <summary>
 			/// Construct a new simulation
 			/// </summary>
 			/// <param name="mod">Modulation class that contains most of the parameters of the simulation</param>
 			/// <param name="reporter">Reporter to use to report progress on the simulation</param>
-			public SingleSimulation(Modulations.ModulationType mod, SimulationLogFileReporter reporter)
+			public SingleSimulation(Modulations.ModulationType mod, List<SimulationReporter> reporters)
 			{
 				_modOriginal = mod;
-				_reporter = reporter;
+				_reporters = reporters;
 			}
 
 			/// <summary>
@@ -85,12 +85,12 @@ namespace InverseBeamforming
 					if (numberWrongThisIteration != 0)
 					{
 						isr = new IntermediateSimResults(totalNumWrong, numberWrongThisIteration, totalBitsSimulated, numberToGetWrongEventually - totalNumWrong, noisePower.ToString());
-						_reporter.OnNext(this);
+						_reporters.OnNext_List(this);
 					}
 				}
 
 				//Simulation is done, inform the observers
-				_reporter.OnCompleted();
+				_reporters.OnCompleted_List();
 
 				//Return the final simulation results
 				return new FinalSimResults(totalNumWrong, totalBitsSimulated, noisePower, _modOriginal);
@@ -102,7 +102,7 @@ namespace InverseBeamforming
 			/// <param name="numberToGetWrongEventually">Number of bit errors to simulate to</param>
 			/// <param name="noisePower">Power of the AWGN added to the signals</param>
 			/// <returns>Final results of the simulation</returns>
-			public FinalSimResults RunFIRFilterSimulationObservable(int numberToGetWrongEventually, double noisePower, int index = -1)
+			public FinalSimResults RunFIRFilterSimulationObservable(int numberToGetWrongEventually, double noisePower)
 			{
 				byte[] inbits = new byte[_modOriginal.NumberSymbolsPerWaveform];
 				double[] waveform;
@@ -137,12 +137,87 @@ namespace InverseBeamforming
 					if (numberWrongThisIteration != 0)
 					{
 						isr = new IntermediateSimResults(totalNumWrong, numberWrongThisIteration, totalBitsSimulated, numberToGetWrongEventually - totalNumWrong, noisePower.ToString());
-						_reporter.OnNext(this);
+						_reporters.OnNext_List(this);
 					}
 				}
 
 				//Simulation is done, inform the observers
-				_reporter.OnCompleted();
+				_reporters.OnCompleted_List();
+
+				//Return the final simulation results
+				return new FinalSimResults(totalNumWrong, totalBitsSimulated, noisePower, _modOriginal);
+			}
+
+			/// <summary>
+			/// Run a simulation using Code division that reports its progress
+			/// </summary>
+			/// <param name="numberToGetWrongEventually">Number of bit errors to simulate</param>
+			/// <param name="noisePower">Power of the gaussian noise in the simulation</param>
+			/// <param name="user">Row of the code of the user of interest</param>
+			/// <returns>Simulation results</returns>
+			public FinalSimResults RunCodeDivisionSimulationObservable(int numberToGetWrongEventually, double noisePower, double[] otherUserPowers, int user = 3)
+			{
+				//Set up code matrices and filter coefficients
+				_modOriginal.GoldFIR_DS_Coefficients = null;
+				_modOriginal.GoldFIR_RF_Coefficients = null;
+				_modOriginal.initializeSpreadingCodes(Modulations.ModulationType.getGoldCodes,31);
+
+				byte[] inbits = new byte[_modOriginal.NumberSymbolsPerWaveform];
+				double[] waveform;
+				byte[] outbits;
+
+				int numberWrongThisIteration = 0;
+				int totalNumWrong = 0, totalBitsSimulated = 0;
+
+				//Loop while there haven't been enough bit estimation errors
+				while (totalNumWrong < numberToGetWrongEventually)
+				{
+					//Modulate the bits
+					waveform = _modOriginal.ModulateRandomBits(ref inbits);
+
+					//Spread the waveform
+					_modOriginal.SpreadWaveform(ref waveform, user);
+
+					//Add noise to the waveform
+					_modOriginal.AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
+
+					for (int i = 0; i < otherUserPowers.Length; i++)
+					{
+						_modOriginal.AddSreadWaveform(ref waveform, user + i + 1, otherUserPowers[i]);
+					}
+
+					//Waveform now holds what the receiver what actually receive
+					//Everything below is in the Receiver
+
+					//Filter the received waveform (RF Filter)
+					waveform = _modOriginal.FIR_Filter(waveform,Modulations.ModulationType.EFilterToUse.RF);
+
+					//Despread the filtered signal
+					_modOriginal.DespreadWaveform(ref waveform, user);
+
+					//Filter the despread signal
+					waveform = _modOriginal.FIR_Filter(waveform, Modulations.ModulationType.EFilterToUse.DS);
+
+					//Demodulate the waveform+noise
+					outbits = _modOriginal.CorrelationReceiver(waveform);
+
+					//Get the total number of bits that were estimated wrongly
+					numberWrongThisIteration = _modOriginal.numberDifferentBits(inbits, outbits);
+					totalNumWrong += numberWrongThisIteration;
+
+					//Update the total number of bits simulated
+					totalBitsSimulated += _modOriginal.NumberSymbolsPerWaveform;
+
+					//If there were any bit errors this iteration, report them
+					if (numberWrongThisIteration != 0)
+					{
+						isr = new IntermediateSimResults(totalNumWrong, numberWrongThisIteration, totalBitsSimulated, numberToGetWrongEventually - totalNumWrong, noisePower.ToString());
+						_reporters.OnNext_List(this);
+					}
+				}
+
+				//Simulation is done, inform the observers
+				_reporters.OnCompleted_List();
 
 				//Return the final simulation results
 				return new FinalSimResults(totalNumWrong, totalBitsSimulated, noisePower, _modOriginal);

@@ -50,7 +50,12 @@ namespace InverseBeamforming
 			/// Percentage of the total errors required to end the simulation
 			/// </summary>
 			public double PercentErrorHad
-			{ get { return (double)TotalErrors*100.0 / (TotalErrors + TotalErrorsRemaining); } }
+			{
+				get
+				{
+					return (TotalErrorsRemaining > 0) ? TotalErrors * 100.0 / (TotalErrors + TotalErrorsRemaining) : 100;
+				}
+			}
 
 			public string SimulationName { get; set; }
 
@@ -66,7 +71,7 @@ namespace InverseBeamforming
 				TotalErrors = totalErrors;
 				NumberErrorsThisIteration = numberErrorsThisIteration;
 				TotalBitsSimulated = totalBitsSimulated;
-				TotalErrorsRemaining = totalErrorsRemaining;
+				TotalErrorsRemaining = (totalErrorsRemaining >=0) ? totalErrorsRemaining : 0;
 				SimulationName = simulationName;
 			}
 

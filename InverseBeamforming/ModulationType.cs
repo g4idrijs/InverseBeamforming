@@ -26,6 +26,8 @@ namespace InverseBeamforming
 		/// </summary>
 		public abstract class ModulationType : I_SpreadingCode
 		{
+			public enum EFilterToUse { RF, DS };
+
 			#region Properties
 
 			/// <summary>
@@ -95,17 +97,30 @@ namespace InverseBeamforming
 			protected int _samplesPerSymbol;
 
 			/// <summary>
-			/// Coefficients of an FIR filter
+			/// Coefficients of an FIR filter for the RF filter stage
 			/// </summary>
-			public double[] FIR_Coefficients
+			public double[] FIR_Coefficients_RF
 			{
-				get { return this._firCoefficients; }
+				get { return this._firCoefficients_RF; }
 				set
 				{
-					this._firCoefficients = value;
+					this._firCoefficients_RF = value;
 				}
 			}
-			protected double[] _firCoefficients;
+			protected double[] _firCoefficients_RF;
+
+			/// <summary>
+			/// Coefficients of an FIR filter for the DS filter stage
+			/// </summary>
+			public double[] FIR_Coefficients_DS
+			{
+				get { return this._firCoefficients_DS; }
+				set
+				{
+					this._firCoefficients_DS = value;
+				}
+			}
+			protected double[] _firCoefficients_DS;
 
 			/// <summary>
 			/// Power to be contained in the signal waveform after modulation
@@ -209,7 +224,7 @@ namespace InverseBeamforming
 				set { this._bitsToCommunicationsSymbols = value; }
 			}
 			protected byte[] _bitsToCommunicationsSymbols;
-			
+
 			#endregion
 
 			#region Constructors
@@ -225,7 +240,7 @@ namespace InverseBeamforming
 				this.SampleRate = samplingRate;
 				this.SamplesPerSymbol = samplesPerSymbol;
 				this.SignalPower = signalPower;
-				this.FIR_Coefficients = firCoefficients;
+				this.FIR_Coefficients_RF = firCoefficients;
 				this.NumberSymbolsPerWaveform = numberSymbolsPerWaveform;
 				this.M = M;
 
@@ -238,7 +253,7 @@ namespace InverseBeamforming
 			/// </summary>
 			/// <param name="old">Previous instance to make a new copy of</param>
 			public ModulationType(ModulationType old)
-				:this(old._carrierFrequency, old._sampleRate, old._samplesPerSymbol, old._signalPower, old._firCoefficients.NullCloneSafely(),old._numberSymbolsPerWaveform, old._M)
+				: this(old._carrierFrequency, old._sampleRate, old._samplesPerSymbol, old._signalPower, old._firCoefficients_RF.NullCloneSafely(), old._numberSymbolsPerWaveform, old._M)
 			{
 				this._reference = (double[,])old._reference;
 			}
@@ -347,13 +362,21 @@ namespace InverseBeamforming
 			/// Implements FIR filtering on the signal using the coefficients given when the instance was constructed
 			/// </summary>
 			/// <param name="signal">Signal to filter</param>
+			/// <param name="filt">Use the RF or DS filter (RF by default)</param>
 			/// <returns>Filtered signal</returns>
-			public double[] FIR_Filter(double[] signal)
+			public double[] FIR_Filter(double[] signal, EFilterToUse filt = EFilterToUse.RF)
 			{
+				double[] filter;
 
-				int numTaps = this._firCoefficients.Length;
+				if (filt == EFilterToUse.DS)
+					filter = this._firCoefficients_DS;
+				else
+					filter = this._firCoefficients_RF;
+
+				int numTaps = filter.Length;
 				int numSigPoints = signal.Length;
 				int top = 0, n, k;
+
 				double[] reg = new double[numTaps];
 				double[] filteredSignal = new double[numSigPoints];
 				double y;
@@ -366,11 +389,11 @@ namespace InverseBeamforming
 
 					for (k = top; k >= 0; k--)
 					{
-						y += this._firCoefficients[n++] * reg[k];
+						y += filter[n++] * reg[k];
 					}
 					for (k = numTaps - 1; k > top; k--)
 					{
-						y += this._firCoefficients[n++] * reg[k];
+						y += filter[n++] * reg[k];
 					}
 					filteredSignal[j] = y;
 					top++;
@@ -382,6 +405,7 @@ namespace InverseBeamforming
 
 				return filteredSignal;
 			}
+
 
 			#endregion
 
@@ -399,7 +423,7 @@ namespace InverseBeamforming
 
 				for (int i = 0; i < bits.Length; i++)
 				{
-					bits[i] = (byte) (bits[i] % M);
+					bits[i] = (byte)(bits[i] % M);
 				}
 			}
 
@@ -582,7 +606,7 @@ namespace InverseBeamforming
 			/// <returns>Overall bit error rate of the simulation</returns>
 			public double RunSimulationOneNoisePowerIdealFiltering(int numberToGetWrongEventually, double noisePower)
 			{
-				byte[] inbits=new byte[this._numberSymbolsPerWaveform];
+				byte[] inbits = new byte[this._numberSymbolsPerWaveform];
 				double[] waveform;
 				byte[] outbits;
 
@@ -663,8 +687,8 @@ namespace InverseBeamforming
 				//Loop through each of the noise powers
 				Parallel.For(0, noisePowers.Length - 1, i =>
 				  {
-				  //yield return the BER from that simulation
-				  bers[i] = RunSimulationOneNoisePowerIdealFiltering(numberToGetWrongEventually, noisePowers[i]);
+					  //yield return the BER from that simulation
+					  bers[i] = RunSimulationOneNoisePowerIdealFiltering(numberToGetWrongEventually, noisePowers[i]);
 				  });
 				return bers;
 			}
@@ -724,6 +748,40 @@ namespace InverseBeamforming
 
 				//Return the spreading code
 				return spreadingCode;
+			}
+
+			/// <summary>
+			/// Adds another user spread signal to the given waveform
+			/// </summary>
+			/// <param name="waveform">Waveform to add the other user to</param>
+			/// <param name="otherUser">Index of the core row to use</param>
+			/// <param name="signalPower">Power of the other users signal</param>
+			public void AddSreadWaveform(ref double[] waveform, int otherUser, double signalPower)
+			{
+				byte[] bits = new byte[_numberSymbolsPerWaveform];
+				int index;
+				double[] otherUserWaveform = ModulateRandomBits(ref bits);
+
+				//Loop through each symbol
+				for (int i = 0; i < _numberSymbolsPerWaveform; i++)
+				{
+					//Loop through each chip
+					for (int k = 0; k < _numChips; k++)
+					{
+						index = i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips;
+
+						//Loop through the samples in each chip
+						for (int j = 0; j < _samplesPerSymbol / _numChips; j++)
+						{
+							//The *2 - 1 is to get from 0s and 1s to -1s and 1s
+							//The Sqrt(signalPower/_signalPower) is to convert the other user signal to the desired power
+							otherUserWaveform[index + j] *= Math.Sqrt(signalPower / _signalPower) * ((double)this._codeMatrix[otherUser, k] * 2 - 1);
+
+							//Add the result to the original waveform
+							waveform[index + j] += otherUserWaveform[index + j];
+						}
+					}
+				}
 			}
 
 			///<summary>
@@ -786,9 +844,11 @@ namespace InverseBeamforming
 			/// Returns the gold codes of length 31
 			/// </summary>
 			/// <returns>Byte array containing the gold codes of length 31</returns>
-			private byte[,] getGoldCodes()
+			public static byte[,] getGoldCodes
 			{
-				return new byte[,] {{0,0,0,1,0,1,1,0,0,1,1,1,1,1,0,0,0,1,1,0,1,1,1,0,1,0,1,0,0,0,0,1},
+				get
+				{
+					return new byte[,] {{0,0,0,1,0,1,1,0,0,1,1,1,1,1,0,0,0,1,1,0,1,1,1,0,1,0,1,0,0,0,0,1},
 								{1,1,0,1,1,0,1,0,0,0,0,1,1,0,0,1,0,0,1,1,1,1,1,0,1,1,1,0,0,0,1,0},
 								{1,1,0,0,1,1,0,0,0,1,1,0,0,1,0,1,0,1,0,1,0,0,0,0,0,1,0,0,0,0,1,1},
 								{0,0,1,0,0,0,1,0,0,1,0,0,1,1,1,0,0,0,0,1,0,0,1,1,0,1,1,0,0,1,0,0},
@@ -821,6 +881,50 @@ namespace InverseBeamforming
 								{0,0,1,1,1,1,0,1,0,0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,1,1,1,1,1,0,1},
 								{1,1,0,0,0,0,0,0,1,1,1,1,1,0,1,0,0,0,1,0,0,0,0,1,0,0,0,1,1,0,0,1},
 								{0,0,1,1,1,0,1,1,0,1,1,1,0,0,0,0,1,1,1,1,0,0,0,1,1,1,0,1,0,0,0,0}};
+				}
+			}
+
+			/// <summary>
+			/// Returns Hadamard codes of size 32
+			/// </summary>
+			/// <returns>Hadamard codes of length 32</returns>
+			public static byte[,] getHadamardCodes
+			{
+				get
+				{
+					return new byte[,] {{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+									  {1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0},
+									  {1,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0},
+									  {1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1},
+									  {1,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0},
+									  {1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1},
+									  {1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1},
+									  {1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0},
+									  {1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0},
+									  {1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1},
+									  {1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1},
+									  {1,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0},
+									  {1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1},
+									  {1,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0},
+									  {1,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0},
+									  {1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1},
+									  {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+									  {1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1},
+									  {1,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1},
+									  {1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0},
+									  {1,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1},
+									  {1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
+									  {1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0},
+									  {1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1},
+									  {1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1},
+									  {1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,0},
+									  {1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,1,1,0,0,1,1,0,0},
+									  {1,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1},
+									  {1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0},
+									  {1,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,1,0,1,0,0,1,0,1},
+									  {1,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,1,1,0,0,0,0,1,1},
+									  {1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0}};
+				}
 			}
 
 			#endregion
@@ -844,6 +948,67 @@ namespace InverseBeamforming
 
 				//Return the time array
 				return time;
+			}
+
+			/// <summary>
+			/// Set the ds filter coefficients to those matching the gold codes
+			/// </summary>
+			public double[] GoldFIR_DS_Coefficients
+			{
+				get
+				{
+					return new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
+				}
+				set
+				{
+					this._firCoefficients_DS = new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
+				}
+			}
+
+			/// <summary>
+			/// Set the rf filter coefficients to those matching the gold codes
+			/// </summary>
+			public double[] GoldFIR_RF_Coefficients
+			{
+				get
+				{
+					return new double[] { -0.009168, -0.022866, -0.049365, -0.072549, -0.062206, 0.000000, 0.099806, 0.192854, 0.230794, 0.192854, 0.099806, 0.000000, -0.062206, -0.072549, -0.049365, -0.022866, -0.009168 };
+				}
+				set
+				{
+					this._firCoefficients_RF = new double[] { -0.009168, -0.022866, -0.049365, -0.072549, -0.062206, 0.000000, 0.099806, 0.192854, 0.230794, 0.192854, 0.099806, 0.000000, -0.062206, -0.072549, -0.049365, -0.022866, -0.009168 };
+				}
+				
+			}
+
+			/// <summary>
+			/// Set the ds filter coefficients to those matching the hadamard codes
+			/// </summary>
+			public double[] HadamardFIR_DS_Coefficients
+			{
+				get
+				{
+					return new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
+				}
+				set
+				{
+					this._firCoefficients_DS = new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
+				}
+			}
+
+			/// <summary>
+			/// Set the rf filter coefficients to those matching the hadamard codes
+			/// </summary>
+			public double[] HadamardFIR_RF_Coefficients
+			{
+				get
+				{
+					return new double[] { -0.009165, -0.022861, -0.049358, -0.072544, -0.062204, 0.000000, 0.099810, 0.192864, 0.230808, 0.192864, 0.099810, 0.000000, -0.062204, -0.072544, -0.049358, -0.022861, -0.009165 };
+				}
+				set
+				{
+					this._firCoefficients_RF = new double[] { -0.009165, -0.022861, -0.049358, -0.072544, -0.062204, 0.000000, 0.099810, 0.192864, 0.230808, 0.192864, 0.099810, 0.000000, -0.062204, -0.072544, -0.049358, -0.022861, -0.009165 };
+				}
 			}
 
 			#endregion

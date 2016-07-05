@@ -24,7 +24,7 @@ namespace InverseBeamforming
 			/// <summary>
 			/// Enumeration that holds the types of simulations possible
 			/// </summary>
-			public enum ESimulationType { Simple, FIR };
+			public enum ESimulationType { Simple, FIR, CDMA };
 
 			/// <summary>
 			/// Original modulation class used in the simulations
@@ -82,6 +82,8 @@ namespace InverseBeamforming
 						return await RunManyFIRSimulationsObservableAsync();
 					case ESimulationType.Simple:
 						return await RunManySimpleSimulationsObservableAsync();
+					case ESimulationType.CDMA:
+						return await RunManyCDMASimulationsObservableAsync();
 					default:
 						return await RunManySimpleSimulationsObservableAsync();
 				}
@@ -101,12 +103,14 @@ namespace InverseBeamforming
 				var simulations = new SingleSimulation[_noisePowers.Length];
 				Modulations.ModulationType modulation;
 
-				var reporters = new SimulationLogFileReporter[_noisePowers.Length];
+				List<SimulationReporter>[] reporters = new List<SimulationReporter>[_noisePowers.Length];
 				for (int i = 0; i < _noisePowers.Length; i++)
 				{
 					provider[i] = new SimulationTracker();
-					reporters[i] = new SimulationLogFileReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv");
-					reporters[i].Subscribe(provider[i]);
+					reporters[i] = new List<SimulationReporter>();
+					reporters[i].Add(new SimulationLogFileReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv"));
+					reporters[i].Add(new SimulationProgressBarReporter("Noise Power:" + _noisePowers[i].ToString()));
+					reporters[i].Subscribe_List(provider[i]);
 				}
 
 				//Loop through each of the noise powers
@@ -129,7 +133,7 @@ namespace InverseBeamforming
 							break;
 					}
 
-					reporters[i].OnStart();
+					reporters[i].OnStart_List();
 
 					simulations[i] = new SingleSimulation(modulation, reporters[i]);
 					//Add the results of the simulation to the list
@@ -156,12 +160,14 @@ namespace InverseBeamforming
 				var simulations = new SingleSimulation[_noisePowers.Length];
 				Modulations.ModulationType modulation;
 
-				var reporters = new SimulationLogFileReporter[_noisePowers.Length];
+				List<SimulationReporter>[] reporters = new List<SimulationReporter>[_noisePowers.Length];
 				for (int i = 0; i < _noisePowers.Length; i++)
 				{
 					provider[i] = new SimulationTracker();
-					reporters[i] = new SimulationLogFileReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv");
-					reporters[i].Subscribe(provider[i]);
+					reporters[i] = new List<SimulationReporter>();
+					reporters[i].Add(new SimulationLogFileReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv"));
+					reporters[i].Add(new SimulationProgressBarReporter("Noise Power:" + _noisePowers[i].ToString()));
+					reporters[i].Subscribe_List(provider[i]);
 				}
 
 				//Loop through each of the noise powers
@@ -184,11 +190,76 @@ namespace InverseBeamforming
 							break;
 					}
 
-					reporters[i].OnStart();
+					reporters[i].OnStart_List();
 
 					simulations[i] = new SingleSimulation(modulation, reporters[i]);
 					//Add the results of the simulation to the list
 					results.Add(simulations[i].RunFIRFilterSimulationObservable(_numberToGetWrongEventually, _noisePowers[i]));
+				});
+
+				results.Sort();
+
+				//Return the results
+				return results;
+			}
+
+			/// <summary>
+			/// Runs many simulations with FIR filtering that each report their progress to log files
+			/// </summary>
+			/// <param name="_numberToGetWrongEventually">Number of bit errors to simulate before stopping</param>
+			/// <param name="_noisePowers">Array of noise powers to simulate</param>
+			/// <returns>List of objects that contain information about each of the simulations</returns>
+			public async Task<List<FinalSimResults>> RunManyCDMASimulationsObservableAsync()
+			{
+				//Initialize a list to hold the results
+				List<FinalSimResults> results = new List<FinalSimResults>();
+				var provider = new SimulationTracker[_noisePowers.Length];
+				var simulations = new SingleSimulation[_noisePowers.Length];
+				int K = 0;
+				var otherUsersPowers = new double[K];
+				Modulations.ModulationType modulation;
+
+				for(int i = 0; i<otherUsersPowers.Length; i++)
+				{
+					otherUsersPowers[i] = _originalModulation.SignalPower;
+				}
+
+				List<SimulationReporter>[] reporters = new List<SimulationReporter>[_noisePowers.Length];
+				for (int i = 0; i < _noisePowers.Length; i++)
+				{
+					provider[i] = new SimulationTracker();
+					reporters[i] = new List<SimulationReporter>();
+					reporters[i].Add(new SimulationLogFileReporter(Path.ChangeExtension(_logFilename, null) + "_NP_" + _noisePowers[i].ToString() + ".csv"));
+					reporters[i].Add(new SimulationProgressBarReporter("Noise Power:" + _noisePowers[i].ToString()));
+					reporters[i].Subscribe_List(provider[i]);
+				}
+
+				//Loop through each of the noise powers
+				Parallel.For(0, _noisePowers.Length, i =>
+				{
+					string modType = _originalModulation.GetType().Name;
+					switch (modType)
+					{
+						case "MPSK_Modulation":
+							modulation = (Modulations.ModulationType)new Modulations.MPSK_Modulation(_originalModulation as Modulations.MPSK_Modulation);
+							break;
+						case "BPSK_Modulation":
+							modulation = (Modulations.ModulationType)new Modulations.BPSK_Modulation(_originalModulation as Modulations.BPSK_Modulation);
+							break;
+						case "MFSK_Modulation":
+							modulation = (Modulations.ModulationType)new Modulations.MFSK_Modulation(_originalModulation as Modulations.MFSK_Modulation);
+							break;
+						default:
+							modulation = (Modulations.ModulationType)new Modulations.MPSK_Modulation(_originalModulation as Modulations.MPSK_Modulation);
+							break;
+					}
+
+					reporters[i].OnStart_List();
+
+					simulations[i] = new SingleSimulation(modulation, reporters[i]);
+
+					//Add the results of the simulation to the list
+					results.Add(simulations[i].RunCodeDivisionSimulationObservable(_numberToGetWrongEventually, _noisePowers[i], otherUsersPowers, 3));
 				});
 
 				results.Sort();

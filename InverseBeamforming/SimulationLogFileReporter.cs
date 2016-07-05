@@ -19,23 +19,8 @@ namespace InverseBeamforming
 		/// <summary>
 		/// Class that describes the process of being subscribed to a simulation
 		/// </summary>
-		public class SimulationLogFileReporter : IObserver<SingleSimulation>
+		public class SimulationLogFileReporter : SimulationReporter
 		{
-			/// <summary>
-			/// Information to unsubscribe from the simulation
-			/// </summary>
-			private IDisposable unsubscriber;
-
-			/// <summary>
-			/// Filename of the log file to write the intermediate results to
-			/// </summary>
-			private string _logFilename;
-
-			/// <summary>
-			/// Start and end times of the simulation
-			/// </summary>
-			private DateTime startTime, endTime;
-
 			/// <summary>
 			/// List of intermediate results that have not yet been written to the log file
 			/// </summary>
@@ -53,19 +38,9 @@ namespace InverseBeamforming
 			}
 
 			/// <summary>
-			/// Subscribe to the simulation
-			/// </summary>
-			/// <param name="provider">Requesting observer of the simulation</param>
-			public virtual void Subscribe(IObservable<SingleSimulation> provider)
-			{
-				if (provider != null)
-					unsubscriber = provider.Subscribe(this);
-			}
-
-			/// <summary>
 			/// Sets up the file to log the simulation
 			/// </summary>
-			public virtual void OnStart()
+			public override void OnStart()
 			{
 				//Get the starting time
 				startTime = DateTime.Now;
@@ -95,7 +70,7 @@ namespace InverseBeamforming
 			/// Report the status of the simulation to the logfile
 			/// </summary>
 			/// <param name="sim">Simulation to report the status of</param>
-			public virtual void OnNext(SingleSimulation sim)
+			public override void OnNext(SingleSimulation sim)
 			{
 				//Get the intermediate results from the simulation
 				IntermediateSimResults isr = sim.isr;
@@ -108,14 +83,14 @@ namespace InverseBeamforming
 						//If there are previous ISRs that haven't been written to the file, then write them now while it is open
 						foreach (var oldISR in _pastISRs.ToList())
 						{
-							file.WriteLine(String.Format("Simulation: {0} {1:MM/dd/yyyy HH:mm:ss:fffffff} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: 0.00}, Percent errors found: {6: 0.00}", oldISR.ToString(), DateTime.Now, oldISR.TotalErrors, oldISR.NumberErrorsThisIteration, oldISR.TotalBitsSimulated, oldISR.BitErrorRate, oldISR.PercentErrorHad * 100));
+							file.WriteLine(String.Format("{1:MM/dd/yyyy HH:mm:ss:fffffff} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: 0.00}, Percent errors found: {6: 0.00}", oldISR.ToString(), DateTime.Now, oldISR.TotalErrors, oldISR.NumberErrorsThisIteration, oldISR.TotalBitsSimulated, oldISR.BitErrorRate, oldISR.PercentErrorHad));
 						}
 
 						// Clear the list of unwritten ISRs because they just got written
 						_pastISRs.Clear();
 
 						//Write the current information to the log file
-						file.WriteLine(String.Format("Simulation: {0} {1:MM/dd/yyyy HH:mm:ss:fffffff} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: 0.00}, Percent errors found: {6: 0.00}", isr.ToString(), DateTime.Now, isr.TotalErrors, isr.NumberErrorsThisIteration, isr.TotalBitsSimulated, isr.BitErrorRate, isr.PercentErrorHad * 100));
+						file.WriteLine(String.Format("{1:MM/dd/yyyy HH:mm:ss:fffffff} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: 0.00}, Percent errors found: {6: 0.00}", isr.ToString(), DateTime.Now, isr.TotalErrors, isr.NumberErrorsThisIteration, isr.TotalBitsSimulated, isr.BitErrorRate, isr.PercentErrorHad));
 					}
 				}
 				//If there was an IOException, then the file is probably locked, so add the current ISR to the list to be added later
@@ -129,7 +104,7 @@ namespace InverseBeamforming
 			/// Report an error in the simulation to the logfile
 			/// </summary>
 			/// <param name="error">Exception describing the error</param>
-			public virtual void OnError(Exception error)
+			public override void OnError(Exception error)
 			{
 				bool notWritten = true;
 
@@ -159,7 +134,7 @@ namespace InverseBeamforming
 			/// <summary>
 			/// Write completion information to the logfile and unsuscribe from the simulation
 			/// </summary>
-			public virtual void OnCompleted()
+			public override void OnCompleted()
 			{
 				//Get the end time of the simulation
 				endTime = DateTime.Now;
@@ -199,15 +174,6 @@ namespace InverseBeamforming
 
 				//Unsubscribe from the simulation
 				this.Unsubscribe();
-			}
-
-			/// <summary>
-			/// Unsubscribe from the simulation
-			/// </summary>
-			public virtual void Unsubscribe()
-			{
-				if (unsubscriber != null)
-					unsubscriber.Dispose();
 			}
 		}
 	}

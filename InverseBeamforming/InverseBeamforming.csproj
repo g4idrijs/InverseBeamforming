@@ -32,6 +32,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Reactive.Core, Version=2.2.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Rx-Core.2.2.5\lib\net45\System.Reactive.Core.dll</HintPath>
       <Private>True</Private>
@@ -59,6 +60,7 @@
     <Compile Include="BPSK_Modulation.cs" />
     <Compile Include="DC.cs" />
     <Compile Include="ExtensionMethods.cs" />
+    <Compile Include="Filter.cs" />
     <Compile Include="FinalSimResults.cs" />
     <Compile Include="IntermediateSimResults.cs" />
     <Compile Include="MFSK_Modulation.cs" />
@@ -68,6 +70,7 @@
     <Compile Include="MultipleSimulations.cs" />
     <Compile Include="SimulationLogFileReporter.cs" />
     <Compile Include="SimulationProgressBarReporter.cs" />
+    <Compile Include="SimulationReporter.cs" />
     <Compile Include="SimulationTracker.cs" />
     <Compile Include="SingleSimulation.cs" />
     <Compile Include="Positions.cs" />
