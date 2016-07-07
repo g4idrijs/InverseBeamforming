@@ -11,32 +11,37 @@ using static InverseBeamforming.Filter.QuadRootsCode;
 
 namespace InverseBeamforming
 {
-	public class Filter
+	public partial class Filter
 	{
-		private static readonly int NUM_SAMPLES = 2048;
+		private static readonly int NUM_SAMPLES = 2048*8;
 
-		public static void ExampleIIRCall(string filename)
+		/// <summary>
+		/// Do an example filter operation
+		/// </summary>
+		/// <param name="CoeffFilename"></param>
+		public static void ExampleIIRCall(string CoeffFilename,string FFTfilename, string IIRFilename)
 		{
 			int j, N;
 			IIR_Filter.TIIRFilterParams IIRFilt;  // Defined in IIRFilterCode.h
-			IIR_Filter.TIIRCoeff IIRCoeff;
+			IIR_Filter.TIIRCoeff IIRCoeff=new IIR_Filter.TIIRCoeff(true);
 
 			// This structure must be filled before calling CalcIIRFilterCoeff().
 			IIRFilt.IIRPassType = IIR_Filter.TIIRPassTypes.BPF;        // iirLPF, iirHPF, iirBPF, iirNOTCH, iirALLPASS  (defined in IIRFilterCode.h)
-			IIRFilt.OmegaC = 0.1666666667;                // 0.0 < OmegaC < 1.0        3 dB freq for low and high pass filters, center freq for band pass and notch filters.
-			IIRFilt.BW = 0.008130081300813;                    // 0.0 < BandWidth < 1.0     3 dB bandwidth for bandpass and notch filters
+			IIRFilt.OmegaC = 0.2;                // 0.0 < OmegaC < 1.0        3 dB freq for low and high pass filters, center freq for band pass and notch filters.
+			IIRFilt.BW = 0.1;                    // 0.0 < BandWidth < 1.0     3 dB bandwidth for bandpass and notch filters
 			IIRFilt.dBGain = 0.0;                // -60.0 < dBGain < 60.0     All filters
 
 			// Define the low pass prototype. These are range checked in LowPassPrototypes.cpp
-			IIRFilt.ProtoType = TFilterPoly.GAUSSIAN;   // BUTTERWORTH, CHEBYSHEV, GAUSSIAN, BESSEL, ADJUSTABLE, INVERSE_CHEBY, PAPOULIS, ELLIPTIC  (defined in LowPassPrototypes.h)
-			IIRFilt.NumPoles = 15;                // 1 <= NumPoles <= 12, 15, 20 Depending on the filter.
+			IIRFilt.ProtoType = TFilterPoly.BUTTERWORTH;   // BUTTERWORTH, CHEBYSHEV, GAUSSIAN, BESSEL, ADJUSTABLE, INVERSE_CHEBY, PAPOULIS, ELLIPTIC  (defined in LowPassPrototypes.h)
+			IIRFilt.NumPoles = 6;                // 1 <= NumPoles <= 12, 15, 20 Depending on the filter.
 			IIRFilt.Ripple = 0.1;                // 0.0 <= Ripple <= 1.0 dB     Chebyshev and Elliptic (less for high order Chebyshev).
 			IIRFilt.StopBanddB = 60.0;           // 20 <= StopBand <= 120 dB    Inv Cheby and Elliptic
 			IIRFilt.Gamma = 0.0;                 // -1.0 <= Gamma <= 1.0        Adjustable Gauss  Controls the transition BW.
 
 
 			// This will fill the IIRCoeff struct with the 2nd order IIR coefficients.
-			IIRCoeff = IIR_Filter.CalcIIRFilterCoeff(IIRFilt);
+			//IIRCoeff = IIR_Filter.CalcIIRFilterCoeff(IIRFilt);
+			getIIRCoefficients_Hadamard_RF(ref IIRCoeff);
 
 			// If desired, this will create an Nth order poly from the 2nd order polys in IIRCoeff.
 			double[] DenomCoeff = new double[25];
@@ -58,35 +63,54 @@ namespace InverseBeamforming
 
 			Samples[0] = NUM_SAMPLES;                                 // The impulse.
 			IIR_Filter.FilterWithIIR(IIRCoeff, ref Samples, ref RealHofZ, NUM_SAMPLES);  // Filter the impulse. RealHofZ is used to store the filtered output.
+
+			using (StreamWriter OutputFile = new StreamWriter(IIRFilename))
+			{
+				// Print the IIR output to a file
+				for (j = 0; j < RealHofZ.Length; j++)
+				{
+					OutputFile.WriteLine(RealHofZ[j]);
+				}
+			}
+
 			FFTCode.FFT(ref RealHofZ, ref ImagHofZ, NUM_SAMPLES, FFTCode.TTransFormType.FORWARD);            // The FFT's results are returned in input arrays, RealHofZ and ImagHofZ.
 
-			using (StreamWriter OutputFile = new StreamWriter(filename))
+			using (StreamWriter OutputFile = new StreamWriter(FFTfilename))
+			{
+				// Print the fft results
+				for (j = 0; j < RealHofZ.Length; j++)
+				{
+					OutputFile.WriteLine(String.Format("{0}, {1}", RealHofZ[j],ImagHofZ[j]));
+				}
+			}
+
+			using (StreamWriter OutputFile = new StreamWriter(CoeffFilename))
 			{
 
 				// Print the IIR coefficients to a text file in 3 formats.
 				for (j = 0; j < IIRCoeff.NumSections; j++)
 				{
-					OutputFile.WriteLine("\n Section {0}", j);
-					OutputFile.WriteLine("\n a0= {0:9.9}  a1= {1:9.9}  a2= {2:9.9}", IIRCoeff.a0[j], IIRCoeff.a1[j], IIRCoeff.a2[j]);
-					OutputFile.WriteLine("\n b0= {0:9.9}  b1= {1:9.9}  b2= {2:9.9} ", IIRCoeff.b0[j], IIRCoeff.b1[j], IIRCoeff.b2[j]);
+					OutputFile.WriteLine(String.Format("\n Section {0}", j));
+					OutputFile.WriteLine(String.Format("\n a0= {0}  a1= {1}  a2= {2}", IIRCoeff.a0[j], IIRCoeff.a1[j], IIRCoeff.a2[j]));
+					OutputFile.WriteLine(String.Format("\n b0= {0}  b1= {1}  b2= {2} ", IIRCoeff.b0[j], IIRCoeff.b1[j], IIRCoeff.b2[j]));
 					OutputFile.WriteLine("");
 				}
 				for (j = 0; j < IIRCoeff.NumSections; j++)
 				{
-					OutputFile.WriteLine("\n  {0:9.9} \n  {1:9.9} \n  {2:9.9}", IIRCoeff.a0[j], IIRCoeff.a1[j], IIRCoeff.a2[j]);
-					OutputFile.WriteLine("\n  {0:9.9} \n  {1:9.9} \n  {2:9.9} ", IIRCoeff.b0[j], IIRCoeff.b1[j], IIRCoeff.b2[j]);
+					OutputFile.WriteLine(String.Format("\n  {0} \n  {1} \n  {2}", IIRCoeff.a0[j], IIRCoeff.a1[j], IIRCoeff.a2[j]));
+					OutputFile.WriteLine(String.Format("\n  {0} \n  {1} \n  {2} ", IIRCoeff.b0[j], IIRCoeff.b1[j], IIRCoeff.b2[j]));
 					OutputFile.WriteLine( "\n ");
 				}
 
 				OutputFile.WriteLine( "\n Nth Order Coeff. \n b's are numerator, a's are denominator.");
 				for (j = N; j >= 0; j--)
 				{
-					OutputFile.WriteLine( "\n b{0} {1:9.9} ", j, NumerCoeff[j]);
+					OutputFile.WriteLine(String.Format("\n b{0} {1} ", j, NumerCoeff[j]));
 				}
 				OutputFile.WriteLine( "\n ");
 				for (j = N; j >= 0; j--)
 				{
-					OutputFile.WriteLine("\n a{0} {1:9.9} ", j, DenomCoeff[j]);
+					OutputFile.WriteLine(String.Format("\n a{0} {1} ", j, DenomCoeff[j]));
 				}
 
 				OutputFile.WriteLine( "\n ");
@@ -670,7 +694,7 @@ namespace InverseBeamforming
 
 				if (Abs(P[3]) < Abs(P[2]) && P[2] > 0.0)
 				{
-					ReversePoly(ref P);
+					ReversePoly(ref P,3);
 					CubicPolyReversed = true;
 				}
 
@@ -729,7 +753,7 @@ namespace InverseBeamforming
 
 				// If we reversed the poly, the roots need to be inverted.
 				if (CubicPolyReversed)
-					InvertRoots(ref RealRoot, ref ImagRoot);
+					InvertRoots(3, ref RealRoot, ref ImagRoot);
 
 				// Apply the Scalar to the roots.
 				for (j = 0; j < 3; j++)
@@ -748,11 +772,11 @@ namespace InverseBeamforming
 			{
 				int j;
 				double a, b, c, d, e, Q3Limit, Scalar, MinRoot;
-				double[] Q = new double[4];
+				double[] Q = new double[ARRAY_DIM];
 				bool QuadPolyReversed = false;
 
-				RealRoot = new double[4];
-				ImagRoot = new double[4];
+				RealRoot = new double[ARRAY_DIM];
+				ImagRoot = new double[ARRAY_DIM];
 
 				// Scale the polynomial so that P[N] = +/- 1. This moves the roots toward unit circle.
 				Scalar = Pow(Abs(P[4]), 0.25);
@@ -762,7 +786,7 @@ namespace InverseBeamforming
 				// Having P[1] < P[3] helps with the Q[3] calculation and test.
 				if (Abs(P[1]) > Abs(P[3]))
 				{
-					ReversePoly(ref P);
+					ReversePoly(ref P,4);
 					QuadPolyReversed = true;
 				}
 
@@ -852,7 +876,7 @@ namespace InverseBeamforming
 
 				// If we reversed the poly, the roots need to be inverted.
 				if (QuadPolyReversed)
-					InvertRoots(ref RealRoot, ref ImagRoot);
+					InvertRoots(4, ref RealRoot, ref ImagRoot);
 
 				// Apply the Scalar to the roots.
 				for (j = 0; j < 4; j++)
@@ -865,20 +889,19 @@ namespace InverseBeamforming
 			/// A reversed polynomial has its roots at the same angle, but reflected about the unit circle.
 			/// </summary>
 			/// <param name="P">polynomial to reverse</param>
-			public static void ReversePoly(ref double[] P)
+			public static void ReversePoly(ref double[] P, int N)
 			{
 				double temp;
-				int n = P.Length;
-				for (int i = 0; i < n; i++)
+				for (int i = 0; i < N; i++)
 				{
 					temp = P[i];
-					P[i] = P[n - i];
-					P[n - i] = temp;
+					P[i] = P[N - i];
+					P[N - i] = temp;
 				}
 
 				if (P[0] != 0)
 				{
-					for (int i = n; i >= 0; i--)
+					for (int i = N; i >= 0; i--)
 					{
 						P[i] /= P[0];
 					}
@@ -890,11 +913,11 @@ namespace InverseBeamforming
 			/// </summary>
 			/// <param name="RealRoot">Real roots</param>
 			/// <param name="ImagRoot">imaginary roots</param>
-			public static void InvertRoots(ref double[] RealRoot, ref double[] ImagRoot)
+			public static void InvertRoots(int N, ref double[] RealRoot, ref double[] ImagRoot)
 			{
 				int j;
 				double Mag;
-				for (j = 0; j < RealRoot.Length; j++)
+				for (j = 0; j < N; j++)
 				{
 					// complex math for 1/x
 					Mag = RealRoot[j] * RealRoot[j] + ImagRoot[j] * ImagRoot[j];
@@ -2085,7 +2108,7 @@ namespace InverseBeamforming
 				TUpdateStatus UpdateStatus = TUpdateStatus.UPDATED;
 				int N, NZ, j, Iter, AngleNumber, TypeOfK;
 				double RealZero = 0, QuadX;
-				double[] TUV = new double[3];
+				double[] TUV = new double[P51_ARRAY_SIZE];
 				double[] P, QuadQP, RealQP, QuadK, RealK, QK;
 
 				N = Degree; // N is decremented as roots are found.

@@ -61,7 +61,9 @@
     <Compile Include="DC.cs" />
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="Filter.cs" />
+    <Compile Include="FilterWrapper.cs" />
     <Compile Include="FinalSimResults.cs" />
+    <Compile Include="GetFilterCoefficients.cs" />
     <Compile Include="IntermediateSimResults.cs" />
     <Compile Include="MFSK_Modulation.cs" />
     <Compile Include="ModulationType.cs" />

@@ -12,13 +12,15 @@ namespace InverseBeamforming.Tests
 	[TestClass()]
 	public class FilterTests
 	{
-		private string _testFileDumpDirec = Environment.GetEnvironmentVariable("USERPROFILE") + Path.DirectorySeparatorChar + @"Documents\TestFileDump\ObservableSimulations" + Path.DirectorySeparatorChar;
+		private string _testFileDumpDirec = Environment.GetEnvironmentVariable("USERPROFILE") + Path.DirectorySeparatorChar + @"Documents\TestFileDump\Filters" + Path.DirectorySeparatorChar;
 
 		[TestMethod()]
 		public void ExampleIIRCallTest()
 		{
-			string filename = _testFileDumpDirec + "IIR Filter.txt";
-			Filter.ExampleIIRCall(filename);
+			string coeffFilename = _testFileDumpDirec + "IIR Filter.txt";
+			string IIRFilename = _testFileDumpDirec + "IIR Filter Output.txt";
+			string FFTFilename = _testFileDumpDirec + "FFT Output.txt";
+			Filter.ExampleIIRCall(coeffFilename, FFTFilename, IIRFilename);
 		}
 	}
 }
