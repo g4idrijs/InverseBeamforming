@@ -124,10 +124,10 @@ namespace InverseBeamforming
 			}
 			
 			/// <summary>
-			/// Private setter for the progress bar
+			/// protected setter for the progress bar
 			/// </summary>
 			/// <param name="value">New value for the bar</param>
-			private void setProgressBar(double value)
+			protected void setProgressBar(double value)
 			{
 				if (value >= 0 && value <= 100)
 					this._progress = value;

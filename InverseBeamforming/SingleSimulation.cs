@@ -24,7 +24,7 @@ namespace InverseBeamforming
 			/// <summary>
 			/// Modulation type, and most of the parameters used in the simulation having to deal with modulation
 			/// </summary>
-			private Modulations.ModulationType _modOriginal;
+			protected Modulations.ModulationType _modOriginal;
 
 			/// <summary>
 			/// Current intermediate state of the simulation
@@ -166,6 +166,7 @@ namespace InverseBeamforming
 				byte[] inbits = new byte[_modOriginal.NumberSymbolsPerWaveform];
 				double[] waveform;//, other=new double[_modOriginal.NumberSymbolsPerWaveform*_modOriginal.SamplesPerSymbol];
 				byte[] outbits;
+				
 
 				int numberWrongThisIteration = 0;
 				int totalNumWrong = 0, totalBitsSimulated = 0;
@@ -225,7 +226,7 @@ namespace InverseBeamforming
 			}
 
 
-			private void writeToCSV<T>(T[] mat, string filename, double sampleRate = 0)
+			protected void writeToCSV<T>(T[] mat, string filename, double sampleRate = 0)
 			{
 				filename = filename + ".csv";
 				var csv = new StringBuilder();

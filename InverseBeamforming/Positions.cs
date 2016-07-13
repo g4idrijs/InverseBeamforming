@@ -29,7 +29,7 @@ namespace InverseBeamforming
 				this._txPositions = value;
 			}
 		}
-		private double[,] _txPositions;
+		protected double[,] _txPositions;
 
 		/// <summary>
 		/// Positions of the Receive antennas, coordinates given in meters
@@ -45,7 +45,7 @@ namespace InverseBeamforming
 				this._rxPositions = value;
 			}
 		}
-		private double[,] _rxPositions;
+		protected double[,] _rxPositions;
 
 		/// <summary>
 		/// Constructs a new Positions class with the given TX and RX positions

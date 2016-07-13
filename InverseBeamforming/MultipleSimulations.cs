@@ -29,27 +29,27 @@ namespace InverseBeamforming
 			/// <summary>
 			/// Original modulation class used in the simulations
 			/// </summary>
-			private Modulations.ModulationType _originalModulation;
+			protected Modulations.ModulationType _originalModulation;
 
 			/// <summary>
 			/// Number of bit errors to simulate before stopping
 			/// </summary>
-			private int _numberToGetWrongEventually;
+			protected int _numberToGetWrongEventually;
 
 			/// <summary>
 			/// Noise powers to simulate
 			/// </summary>
-			private double[] _noisePowers;
+			protected double[] _noisePowers;
 
 			/// <summary>
 			/// Base of the log file for each of the simulations. Note that the noise power will be attached to the end of each simulations actual log filename
 			/// </summary>
-			private string _logFilename;
+			protected string _logFilename;
 
 			/// <summary>
 			/// Type of simulation to run. If an invalid type is selected, the default is to run a simple simulation
 			/// </summary>
-			private ESimulationType _simulationType;
+			protected ESimulationType _simulationType;
 
 			/// <summary>
 			/// Number of total users of the communications system;

@@ -31,7 +31,7 @@ namespace InverseBeamforming
 					this._frequencies = value;
 				}
 			}
-			private double[] _frequencies;
+			protected double[] _frequencies;
 
 			/// <summary>
 			/// Create a new instance of a MFSK modulator
@@ -113,7 +113,7 @@ namespace InverseBeamforming
 			/// Check the parameters to make sure that all are the right length
 			/// </summary>
 			/// <returns>True if they are okay, false if there is a problem.</returns>
-			private bool checkParams()
+			protected bool checkParams()
 			{
 				if (this._frequencies.Length != this.M ||
 					this._reference.GetLength(0) != this.M ||

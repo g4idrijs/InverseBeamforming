@@ -36,7 +36,7 @@ namespace InverseBeamforming
 					this._phases = value;
 				}
 			}
-			private double[] _phases;
+			protected double[] _phases;
 
 			/// <summary>
 			/// Create an instance with the given parameters

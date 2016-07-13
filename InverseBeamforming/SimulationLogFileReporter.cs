@@ -24,7 +24,7 @@ namespace InverseBeamforming
 			/// <summary>
 			/// List of intermediate results that have not yet been written to the log file
 			/// </summary>
-			private List<IntermediateSimResults> _pastISRs;
+			protected List<IntermediateSimResults> _pastISRs;
 
 			/// <summary>
 			/// Construct a new instances of the SimulationReporter class

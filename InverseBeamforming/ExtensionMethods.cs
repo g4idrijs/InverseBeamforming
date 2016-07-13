@@ -16,7 +16,7 @@ namespace InverseBeamforming
 	/// </summary>
 	public static class ExtensionMethods
 	{
-		private static readonly double CPLXDMATH_ZERO_TEST = 1.0E-50;
+		protected static readonly double CPLXDMATH_ZERO_TEST = 1.0E-50;
 
 		/// <summary>
 		/// Returns the mean value of the array

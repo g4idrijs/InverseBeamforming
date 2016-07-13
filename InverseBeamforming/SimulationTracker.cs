@@ -23,7 +23,7 @@ namespace InverseBeamforming
 			/// <summary>
 			/// List of observers of the simulation
 			/// </summary>
-			private List<IObserver<SingleSimulation>> observers;
+			protected List<IObserver<SingleSimulation>> observers;
 
 			/// <summary>
 			/// Construct a new tracker
@@ -49,17 +49,17 @@ namespace InverseBeamforming
 			/// <summary>
 			/// Class details how to unsubscribe from the simulation
 			/// </summary>
-			private class Unsubsriber : IDisposable
+			protected class Unsubsriber : IDisposable
 			{
 				/// <summary>
 				/// List of observers of the simulation
 				/// </summary>
-				private List<IObserver<SingleSimulation>> _observers;
+				protected List<IObserver<SingleSimulation>> _observers;
 
 				/// <summary>
 				/// Observer of the simulation
 				/// </summary>
-				private IObserver<SingleSimulation> _observer;
+				protected IObserver<SingleSimulation> _observer;
 
 				/// <summary>
 				/// Construct a new Unsubscriber
