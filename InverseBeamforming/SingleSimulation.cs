@@ -155,15 +155,16 @@ namespace InverseBeamforming
 			/// <param name="noisePower">Power of the gaussian noise in the simulation</param>
 			/// <param name="user">Row of the code of the user of interest</param>
 			/// <returns>Simulation results</returns>
-			public FinalSimResults RunCodeDivisionSimulationObservable(int numberToGetWrongEventually, double noisePower, double[] otherUserPowers, int user = 3)
+			public FinalSimResults RunCodeDivisionSimulationObservable(int numberToGetWrongEventually, double noisePower, double[] otherUserPowers, int numberChips=31, int user = 3, byte[,] codeMatrix=null)
 			{
+				
 				//Set up code matrices and filter coefficients
 				_modOriginal.GoldFIR_DS_Coefficients = null;
 				_modOriginal.GoldFIR_RF_Coefficients = null;
-				_modOriginal.initializeSpreadingCodes(Modulations.ModulationType.getGoldCodes,31);
+				_modOriginal.InitializeCodeDivision(numberChips,codeMatrix);
 
 				byte[] inbits = new byte[_modOriginal.NumberSymbolsPerWaveform];
-				double[] waveform;
+				double[] waveform;//, other=new double[_modOriginal.NumberSymbolsPerWaveform*_modOriginal.SamplesPerSymbol];
 				byte[] outbits;
 
 				int numberWrongThisIteration = 0;
@@ -183,20 +184,20 @@ namespace InverseBeamforming
 
 					for (int i = 0; i < otherUserPowers.Length; i++)
 					{
-						_modOriginal.AddSreadWaveform(ref waveform, user + i + 1, otherUserPowers[i]);
+						_modOriginal.AddSpreadWaveform(ref waveform, user + i + 1, otherUserPowers[i]);
 					}
 
 					//Waveform now holds what the receiver what actually receive
 					//Everything below is in the Receiver
 
 					//Filter the received waveform (RF Filter)
-					waveform = _modOriginal.FIR_Filter(waveform,Modulations.ModulationType.EFilterToUse.RF);
+					waveform = Filter.NewIIRFilter.RF_GoldFilter(waveform);
 
 					//Despread the filtered signal
 					_modOriginal.DespreadWaveform(ref waveform, user);
 
 					//Filter the despread signal
-					waveform = _modOriginal.FIR_Filter(waveform, Modulations.ModulationType.EFilterToUse.DS);
+					waveform = Filter.NewIIRFilter.RF_GoldFilter(waveform);
 
 					//Demodulate the waveform+noise
 					outbits = _modOriginal.CorrelationReceiver(waveform);
@@ -221,6 +222,24 @@ namespace InverseBeamforming
 
 				//Return the final simulation results
 				return new FinalSimResults(totalNumWrong, totalBitsSimulated, noisePower, _modOriginal);
+			}
+
+
+			private void writeToCSV<T>(T[] mat, string filename, double sampleRate = 0)
+			{
+				filename = filename + ".csv";
+				var csv = new StringBuilder();
+
+				if (sampleRate != 0)
+					csv.AppendLine(sampleRate.ToString());
+
+				for (int i = 0; i < mat.Length - 1; i++)
+				{
+					csv.AppendLine(mat[i].ToString() + ",");
+				}
+				csv.AppendLine(mat[mat.Length - 1].ToString());
+
+				File.WriteAllText(filename, csv.ToString());
 			}
 		}
 	} 

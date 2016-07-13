@@ -49,6 +49,7 @@
       <HintPath>..\packages\Rx-PlatformServices.2.2.5\lib\net45\System.Reactive.PlatformServices.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Web.Mvc, Version=4.0.0.1, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -60,14 +61,12 @@
     <Compile Include="BPSK_Modulation.cs" />
     <Compile Include="DC.cs" />
     <Compile Include="ExtensionMethods.cs" />
-    <Compile Include="Filter.cs" />
-    <Compile Include="FilterWrapper.cs" />
     <Compile Include="FinalSimResults.cs" />
-    <Compile Include="GetFilterCoefficients.cs" />
+    <Compile Include="GetIIRFilterCoefficients.cs" />
     <Compile Include="IntermediateSimResults.cs" />
     <Compile Include="MFSK_Modulation.cs" />
     <Compile Include="ModulationType.cs" />
-    <Compile Include="I_SpreadingCode.cs" />
+    <Compile Include="SpreadingCode.cs" />
     <Compile Include="MPSK_Modulation.cs" />
     <Compile Include="MultipleSimulations.cs" />
     <Compile Include="SimulationLogFileReporter.cs" />
@@ -77,12 +76,24 @@
     <Compile Include="SingleSimulation.cs" />
     <Compile Include="Positions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WaveformStatistics.cs" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="MLApp">
+      <Guid>{C36E46AB-6A81-457B-9F91-A7719A06287F}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

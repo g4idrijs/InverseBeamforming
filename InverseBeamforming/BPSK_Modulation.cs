@@ -28,6 +28,15 @@ namespace InverseBeamforming
 			{}
 
 			/// <summary>
+			/// Copy Constructor
+			/// </summary>
+			/// <param name="old">Old instance to copy</param>
+			public BPSK_Modulation(BPSK_Modulation old) : base(old)
+			{
+				this._reference = (double[][])old._reference.Clone();
+			}
+
+			/// <summary>
 			/// Create an instance with the given parameters
 			/// </summary>
 			/// <param name="carrierFrequency">Carrier frequency of any resulting modulated waveforms</param>
@@ -42,12 +51,14 @@ namespace InverseBeamforming
 			{
 				var pi2 = 2 * Math.PI * carrierFrequency / samplingRate;
 
+				signalPower = Math.Sqrt(2 * signalPower);
+
 				this._bitsToCommunicationsSymbols = new byte[] { 0, 1 };
 
 				for (int i = 0; i < samplesPerSymbol; i++)
 				{
-					this._reference[1, i] = Math.Cos(pi2 * i);
-					this._reference[0, i] = -_reference[1, i];
+					this._reference[1][i] = signalPower * Math.Cos(pi2 * i);
+					this._reference[0][i] = -_reference[1][i];
 				}
 			}
 

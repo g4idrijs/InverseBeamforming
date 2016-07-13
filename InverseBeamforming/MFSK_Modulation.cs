@@ -54,13 +54,15 @@ namespace InverseBeamforming
 				//Get a scale for each sample
 				double pi2 = Math.PI * 2 / samplingRate;
 
+				signalPower = Math.Sqrt(2 * signalPower);
+
 				//Loop through each symbol
 				for (int i = 0; i < M; i++)
 				{
 					//Loop through the samples in the symbol
 					for (int k = 0; k < samplesPerSymbol; k++)
 					{
-						this._reference[i, k] = Math.Sin(pi2 * frequencies[i] * k);
+						this._reference[i][k] = signalPower * Math.Sin(pi2 * frequencies[i] * k);
 					}
 				}
 

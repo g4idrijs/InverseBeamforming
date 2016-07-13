@@ -10,10 +10,11 @@ namespace InverseBeamforming
 	{
 		/// <summary>
 		/// Gets the filter coefficients for the DS filter
-		/// <summary>
+		/// </summary>
 		/// <param name="IIRCoeff">Structure to fill wil IIR coeficients for the filter</param>
-		public static void getIIRCoefficients_Gold_DS(ref IIR_Filter.TIIRCoeff IIRCoeff)
+		public static void getIIRCoefficients_Gold_DS(out IIR_Filter.TIIRCoeff IIRCoeff)
 		{
+			IIRCoeff = new IIR_Filter.TIIRCoeff(true);
 			IIRCoeff.NumSections = 8;
 			IIRCoeff.b0[0] = 1.162221116541298e-12;
 			IIRCoeff.b1[0] = 2.3473882338099569e-12;
@@ -66,11 +67,30 @@ namespace InverseBeamforming
 		}
 
 		/// <summary>
-		/// Gets the filter coefficients for the RF filter
-		/// <summary>
-		/// <param name="IIRCoeff">Structure to fill wil IIR coeficients for the filter</param>
-		public static void getIIRCoefficients_Gold_RF(ref IIR_Filter.TIIRCoeff IIRCoeff)
+		///Gets the numerator coefficients for the DS filter.
+		/// </summary>
+		/// <param name="numerator">Array to hold the coefficients of the numerator</param>
+		public static void getNumeratorFilterCoefficients_Gold_DS(out double[] numerator)
 		{
+			numerator = new double[]{1.162221116541298e-12,0,-9.2977689323303842e-12,0,3.2542191263156341e-11,0,-6.5084382526312683e-11,0,8.1355478157890857e-11,0,-6.5084382526312683e-11,0,3.2542191263156341e-11,0,-9.2977689323303842e-12,0,1.162221116541298e-12};
+		}
+
+		/// <summary>
+		///Gets the denominator coefficients for the DS filter.
+		/// </summary>
+		/// <param name="denominator">Array to hold the coefficients of the numerator</param>
+		public static void getDenominatorFilterCoefficients_Gold_DS(out double[] denominator)
+		{
+			denominator = new double[]{1,-13.849096268429992,91.902948840949989,-387.3655983184558,1159.5495248195007,-2611.9589880711501,4577.4811682419004,-6364.2461801519275,7092.9861476309752,-6357.5302657991833,4567.8254288960943,-2603.6988479751822,1154.6627765037933,-385.32605635797233,91.322594494097814,-13.747119085342884,0.99158905960120747};
+		}
+
+		/// <summary>
+		/// Gets the filter coefficients for the RF filter
+		/// </summary>
+		/// <param name="IIRCoeff">Structure to fill wil IIR coeficients for the filter</param>
+		public static void getIIRCoefficients_Gold_RF(out IIR_Filter.TIIRCoeff IIRCoeff)
+		{
+			IIRCoeff = new IIR_Filter.TIIRCoeff(true);
 			IIRCoeff.NumSections = 8;
 			IIRCoeff.b0[0] = -4.9370624554234931e-12;
 			IIRCoeff.b1[0] = -9.8741800442909721e-12;
@@ -123,11 +143,30 @@ namespace InverseBeamforming
 		}
 
 		/// <summary>
-		/// Gets the filter coefficients for the DS filter
-		/// <summary>
-		/// <param name="IIRCoeff">Structure to fill wil IIR coeficients for the filter</param>
-		public static void getIIRCoefficients_Hadamard_DS(ref IIR_Filter.TIIRCoeff IIRCoeff)
+		///Gets the numerator coefficients for the RF filter.
+		/// </summary>
+		/// <param name="numerator">Array to hold the coefficients of the numerator</param>
+		public static void getNumeratorFilterCoefficients_Gold_RF(out double[] numerator)
 		{
+			numerator = new double[]{-4.9370624554234931e-12,-0,3.9496499643387944e-11,-0,-1.3823774875185783e-10,-0,2.7647549750371566e-10,-0,-3.4559437187964451e-10,-0,2.7647549750371566e-10,-0,-1.3823774875185783e-10,-0,3.9496499643387944e-11,-0,-4.9370624554234931e-12};
+		}
+
+		/// <summary>
+		///Gets the denominator coefficients for the RF filter.
+		/// </summary>
+		/// <param name="denominator">Array to hold the coefficients of the numerator</param>
+		public static void getDenominatorFilterCoefficients_Gold_RF(out double[] denominator)
+		{
+			denominator = new double[]{1,-13.634094366185479,89.067518542242482,-369.55646143364493,1088.9470330959643,-2414.5236862988809,4165.150964718775,-5700.1010880057238,6253.0079749799352,-5516.525694846131,3901.1885043240381,-2188.6725587436249,955.29889531493677,-313.75931580824039,73.184428232242283,-10.842001092097329,0.76960430657535384};
+		}
+
+		/// <summary>
+		/// Gets the filter coefficients for the DS filter
+		/// </summary>
+		/// <param name="IIRCoeff">Structure to fill wil IIR coeficients for the filter</param>
+		public static void getIIRCoefficients_Hadamard_DS(out IIR_Filter.TIIRCoeff IIRCoeff)
+		{
+			IIRCoeff = new IIR_Filter.TIIRCoeff(true);
 			IIRCoeff.NumSections = 8;
 			IIRCoeff.b0[0] = -4.0651683029553006e-13;
 			IIRCoeff.b1[0] = -8.1310255659040189e-13;
@@ -180,11 +219,30 @@ namespace InverseBeamforming
 		}
 
 		/// <summary>
-		/// Gets the filter coefficients for the RF filter
-		/// <summary>
-		/// <param name="IIRCoeff">Structure to fill wil IIR coeficients for the filter</param>
-		public static void getIIRCoefficients_Hadamard_RF(ref IIR_Filter.TIIRCoeff IIRCoeff)
+		///Gets the numerator coefficients for the DS filter.
+		/// </summary>
+		/// <param name="numerator">Array to hold the coefficients of the numerator</param>
+		public static void getNumeratorFilterCoefficients_Hadamard_DS(out double[] numerator)
 		{
+			numerator = new double[]{-4.0651683029553006e-13,0,3.2521346423642405e-12,0,-1.1382471248274839e-11,0,2.2764942496549679e-11,0,-2.8456178120687101e-11,0,2.2764942496549679e-11,0,-1.1382471248274839e-11,0,3.2521346423642405e-12,0,-4.0651683029553006e-13};
+		}
+
+		/// <summary>
+		///Gets the denominator coefficients for the DS filter.
+		/// </summary>
+		/// <param name="denominator">Array to hold the coefficients of the numerator</param>
+		public static void getDenominatorFilterCoefficients_Hadamard_DS(out double[] denominator)
+		{
+			denominator = new double[]{1,-13.849147635415274,91.903630647864645,-387.3699093146588,1159.5667321529022,-2612.0074416858051,4577.5830720829672,-6364.4114823540403,7093.19670579993,-6357.742591330888,4567.9949400788037,-2603.8051372771574,1154.7141997935737,-385.34464779581492,91.327339822607115,-13.747884476189382,0.99164795138241879};
+		}
+
+		/// <summary>
+		/// Gets the filter coefficients for the RF filter
+		/// </summary>
+		/// <param name="IIRCoeff">Structure to fill wil IIR coeficients for the filter</param>
+		public static void getIIRCoefficients_Hadamard_RF(out IIR_Filter.TIIRCoeff IIRCoeff)
+		{
+			IIRCoeff = new IIR_Filter.TIIRCoeff(true);
 			IIRCoeff.NumSections = 8;
 			IIRCoeff.b0[0] = -6.8352739083232691e-13;
 			IIRCoeff.b1[0] = -1.3795729091285681e-12;
@@ -234,6 +292,24 @@ namespace InverseBeamforming
 			IIRCoeff.a0[7] = 1;
 			IIRCoeff.a1[7] = -1.7088762376548443;
 			IIRCoeff.a2[7] = 1.0107522870505476;
+		}
+
+		/// <summary>
+		///Gets the numerator coefficients for the RF filter.
+		/// </summary>
+		/// <param name="numerator">Array to hold the coefficients of the numerator</param>
+		public static void getNumeratorFilterCoefficients_Hadamard_RF(out double[] numerator)
+		{
+			numerator = new double[]{-6.8352739083232691e-13,0,5.4682191266586153e-12,0,-1.9138766943305151e-11,0,3.8277533886610302e-11,0,-4.7846917358262876e-11,0,3.8277533886610302e-11,0,-1.9138766943305151e-11,0,5.4682191266586153e-12,0,-6.8352739083232691e-13};
+		}
+
+		/// <summary>
+		///Gets the denominator coefficients for the RF filter.
+		/// </summary>
+		/// <param name="denominator">Array to hold the coefficients of the numerator</param>
+		public static void getDenominatorFilterCoefficients_Hadamard_RF(out double[] denominator)
+		{
+			denominator = new double[]{1,-13.628648774602238,88.996176693812231,-369.11144803288579,1087.1953128776229,-2409.6605939391575,4155.0696257077561,-5683.9844493445471,6232.7787328803224,-5496.4264864242232,3885.3791516741344,-2178.9063661702485,950.64402717538985,-312.10135156166245,72.767503055352847,-10.77574371337945,0.76458072201601168};
 		}
 	}
 }

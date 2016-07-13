@@ -168,17 +168,37 @@ namespace InverseBeamforming.Tests
 			var carrierFrequency = 101680;
 			var samplesPerSymbol = 7626;
 			var signalPower = 1;
-			double[] noisePowers = new double[] {  200 };
+			int K = 5;
+			double[] noisePowers = new double[] { 2000, 1500, 300, 200 };
 			int numberToGetWrongEventually = 500;
 			var mpsk = new MPSK_Modulation(carrierFrequency, sampleRate, seed, samplesPerSymbol, signalPower, coefs, 100, 4, new double[] { 0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4 }, new byte[] { 0, 1, 2, 3 });
 
 			string filename = "RunManyCDMASimulationObservableTest";
 			filename = _testFileDumpDirec + filename + ".csv";
-			var multSim = new Simulations.MultipleSimulations(mpsk, Simulations.MultipleSimulations.ESimulationType.CDMA, noisePowers, numberToGetWrongEventually, filename);
+			var multSim = new Simulations.MultipleSimulations(mpsk, Simulations.MultipleSimulations.ESimulationType.CDMA, noisePowers, numberToGetWrongEventually, filename, K);
 			var task = multSim.RunSimulations();
 			task.Wait();
 			List<Simulations.FinalSimResults> results = task.Result;
 		}
+
+		/*
+		[TestMethod()]
+		public void MatlabTesting()
+		{
+			// Create the MATLAB instance 
+			MLApp.MLApp matlab = new MLApp.MLApp();
+
+			// Change to the directory where the function is located 
+			matlab.Execute(@"cd C:\Users\vikin_000\OneDrive\AFIT\Thesis\Code\Matlab\");
+
+			// Define the output 
+			object result = null;
+			// Call the MATLAB function myfunc
+			matlab.Feval("plotIIRFFT", 0, out result);
+
+			// Display result 
+			object[] res = result as object[];
+		}*/
 
 		private void writeToCSV<T>(List<T> list, string filename, double sampleRate=0)
 		{

@@ -52,7 +52,6 @@
   </Choose>
   <ItemGroup>
     <Compile Include="BPSK_ModulationTests.cs" />
-    <Compile Include="FilterTests.cs" />
     <Compile Include="MFSK_ModulationTests.cs" />
     <Compile Include="MPSK_ModulationTests.cs" />
     <Compile Include="PositionsTests.cs" />
@@ -63,6 +62,17 @@
       <Project>{42FEA07D-8C89-47F5-BF14-78D515AD22A7}</Project>
       <Name>InverseBeamforming</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="MLApp">
+      <Guid>{C36E46AB-6A81-457B-9F91-A7719A06287F}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

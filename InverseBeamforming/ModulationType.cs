@@ -24,12 +24,20 @@ namespace InverseBeamforming
 		/// <summary>
 		/// Defines an interface that allows multiple modulation types to be created
 		/// </summary>
-		public abstract class ModulationType : I_SpreadingCode
+		public abstract class ModulationType
 		{
-			public enum EFilterToUse { RF, DS };
-
 			#region Properties
 
+			/// <summary>
+			/// Describes the types of filters available
+			/// </summary>
+			public enum EFilterTypeToUse { IIR, FIR};
+
+			/// <summary>
+			/// Describes the filter choices
+			/// </summary>
+			public enum EFilterToUse { RF, DS };
+			
 			/// <summary>
 			/// String containing the type of modulation used
 			/// </summary>
@@ -123,6 +131,42 @@ namespace InverseBeamforming
 			protected double[] _firCoefficients_DS;
 
 			/// <summary>
+			/// Coefficients of an FIR filter for the DS filter stage
+			/// </summary>
+			//public Filter.IIR_Filter.TIIRCoeff IIR_Coefficients_DS { get { return this._iirCoefficients_DS; } }
+			//protected Filter.IIR_Filter.TIIRCoeff _iirCoefficients_DS;
+
+			/// <summary>
+			/// Coefficients of an FIR filter for the RF filter stage
+			/// </summary>
+			//public Filter.IIR_Filter.TIIRCoeff IIR_Coefficients_RF { get { return this._iirCoefficients_RF; } }
+			//protected Filter.IIR_Filter.TIIRCoeff _iirCoefficients_RF;
+
+			/// <summary>
+			/// Denominator array of coefficients for the DS filter
+			/// </summary>
+			public double[] FilterCoefficients_A_DS { get { return this._filterCoefficients_A_DS; } }
+			protected double[] _filterCoefficients_A_DS;
+
+			/// <summary>
+			/// Numerator array of coefficients for the DS filter
+			/// </summary>
+			public double[] FilterCoefficients_B_DS { get { return this._filterCoefficients_B_DS; } }
+			protected double[] _filterCoefficients_B_DS;
+
+			/// <summary>
+			/// Denominator array of coefficients for the DS filter
+			/// </summary>
+			public double[] FilterCoefficients_A_RF { get { return this._filterCoefficients_A_RF; } }
+			protected double[] _filterCoefficients_A_RF;
+
+			/// <summary>
+			/// Numerator array of coefficients for the DS filter
+			/// </summary>
+			public double[] FilterCoefficients_B_RF { get { return this._filterCoefficients_B_RF; } }
+			protected double[] _filterCoefficients_B_RF;
+
+			/// <summary>
 			/// Power to be contained in the signal waveform after modulation
 			/// </summary>
 			public double SignalPower
@@ -213,7 +257,8 @@ namespace InverseBeamforming
 			/// <summary>
 			/// Holds the reference waveforms for correlation implelmentation of a matched filter
 			/// </summary>
-			protected double[,] _reference;
+			public double[][] Reference { get { return this._reference; } }
+			protected double[][] _reference;
 
 			/// <summary>
 			/// Bit arrays corresponding to each communications symbol
@@ -224,6 +269,13 @@ namespace InverseBeamforming
 				set { this._bitsToCommunicationsSymbols = value; }
 			}
 			protected byte[] _bitsToCommunicationsSymbols;
+
+			/// <summary>
+			/// Supplies methods to spread waveforms
+			/// </summary>
+			public SpreadingCode CodeDivision;
+			protected SpreadingCode _codeDivision;
+
 
 			#endregion
 
@@ -245,7 +297,11 @@ namespace InverseBeamforming
 				this.M = M;
 
 				//Initalize the reference array
-				this._reference = new double[M, samplesPerSymbol];
+				this._reference = new double[M][];
+				for (int i = 0; i < this._reference.Length; i++)
+				{
+					this._reference[i] = new double[samplesPerSymbol];
+				}
 			}
 
 			/// <summary>
@@ -255,7 +311,7 @@ namespace InverseBeamforming
 			public ModulationType(ModulationType old)
 				: this(old._carrierFrequency, old._sampleRate, old._samplesPerSymbol, old._signalPower, old._firCoefficients_RF.NullCloneSafely(), old._numberSymbolsPerWaveform, old._M)
 			{
-				this._reference = (double[,])old._reference;
+				this._reference = (double[][])old._reference.Clone();
 			}
 
 			#endregion
@@ -288,16 +344,28 @@ namespace InverseBeamforming
 				this.GenerateRandomBits(ref bits);
 				return this.ModulateBits(bits);
 			}
-
-
+			
 			/// <summary>
-			/// (Needs to be implemented in inheriting class)
-			/// Modulates the given bits at the sampling rate and carrier frequency given in the constructor
+			/// Modulates bits based on the reference signals generated according to each bit
 			/// </summary>
 			/// <param name="bitsToModulate">The collection of bits to modulate.
 			/// (Does not produce a random set of bits to modulate)</param>
 			/// <returns>Waveform containing the modulated bits</returns>
-			public abstract double[] ModulateBits(byte[] bitsToModulate);
+			public virtual double[] ModulateBits(byte[] bitsToModulate)
+			{
+				double[] waveform = new double[_numberSymbolsPerWaveform * _samplesPerSymbol];
+
+				//Loop through each symbol
+				for (int i = 0; i < _numberSymbolsPerWaveform; i++)
+				{
+					//Loop through each chip
+					for (int k = 0; k < _numChips; k++)
+					{
+						_reference[bitsToModulate[i]].CopyTo(waveform, i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips);
+					}
+				}
+				return waveform;
+			}
 
 			#endregion
 
@@ -336,7 +404,7 @@ namespace InverseBeamforming
 						//Correlate the symbol to the reference signals
 						for (int j = 0; j < M; j++)
 						{
-							z[j] += waveform[i * _samplesPerSymbol + k] * _reference[j, k];
+							z[j] += waveform[i * _samplesPerSymbol + k] * _reference[j][k];
 						}
 					}
 
@@ -405,7 +473,201 @@ namespace InverseBeamforming
 
 				return filteredSignal;
 			}
+			
+			/// <summary>
+			/// Set the ds filter coefficients to those matching the gold codes
+			/// </summary>
+			public double[] GoldFIR_DS_Coefficients
+			{
+				get
+				{
+					return new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
+				}
+				set
+				{
+					this._firCoefficients_DS = new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
+				}
+			}
 
+			/// <summary>
+			/// Set the rf filter coefficients to those matching the gold codes
+			/// </summary>
+			public double[] GoldFIR_RF_Coefficients
+			{
+				get
+				{
+					return new double[] { -0.009168, -0.022866, -0.049365, -0.072549, -0.062206, 0.000000, 0.099806, 0.192854, 0.230794, 0.192854, 0.099806, 0.000000, -0.062206, -0.072549, -0.049365, -0.022866, -0.009168 };
+				}
+				set
+				{
+					this._firCoefficients_RF = new double[] { -0.009168, -0.022866, -0.049365, -0.072549, -0.062206, 0.000000, 0.099806, 0.192854, 0.230794, 0.192854, 0.099806, 0.000000, -0.062206, -0.072549, -0.049365, -0.022866, -0.009168 };
+				}
+				
+			}
+
+			/// <summary>
+			/// Set the ds filter coefficients to those matching the hadamard codes
+			/// </summary>
+			public double[] HadamardFIR_DS_Coefficients
+			{
+				get
+				{
+					return new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
+				}
+				set
+				{
+					this._firCoefficients_DS = new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
+				}
+			}
+
+			/// <summary>
+			/// Set the rf filter coefficients to those matching the hadamard codes
+			/// </summary>
+			public double[] HadamardFIR_RF_Coefficients
+			{
+				get
+				{
+					return new double[] { -0.009165, -0.022861, -0.049358, -0.072544, -0.062204, 0.000000, 0.099810, 0.192864, 0.230808, 0.192864, 0.099810, 0.000000, -0.062204, -0.072544, -0.049358, -0.022861, -0.009165 };
+				}
+				set
+				{
+					this._firCoefficients_RF = new double[] { -0.009165, -0.022861, -0.049358, -0.072544, -0.062204, 0.000000, 0.099810, 0.192864, 0.230808, 0.192864, 0.099810, 0.000000, -0.062204, -0.072544, -0.049358, -0.022861, -0.009165 };
+				}
+			}
+
+			#region old filter crap
+			/*
+			/// <summary>
+			/// Gets the IIR coefficients for the DS filter stage or sets the internal coefficients.
+			/// NOTE: Coefficients are set up for gold code usage
+			/// NOTE: The value passed is not used
+			/// </summary>
+			public Filter.IIR_Filter.TIIRCoeff GoldIIR_DS_Coefficients
+			{
+				get
+				{
+					Filter.IIR_Filter.TIIRCoeff goldDS;
+					Filter.getIIRCoefficients_Gold_DS(out goldDS);
+					return goldDS;
+				}
+				set
+				{
+					Filter.getIIRCoefficients_Gold_DS(out _iirCoefficients_DS);
+				}
+			}
+
+			/// <summary>
+			/// Gets the IIR coefficients for the RF filter stage or sets the internal coefficients.
+			/// NOTE: Coefficients are set up for gold code usage
+			/// NOTE: The value passed is not used
+			/// </summary>
+			public Filter.IIR_Filter.TIIRCoeff GoldIIR_RF_Coefficients
+			{
+				get
+				{
+					Filter.IIR_Filter.TIIRCoeff goldRF;
+					Filter.getIIRCoefficients_Gold_RF(out goldRF);
+					return goldRF;
+				}
+				set
+				{
+					Filter.getIIRCoefficients_Gold_RF(out _iirCoefficients_RF);
+				}
+			}
+
+			/// <summary>
+			/// Gets the IIR coefficients for the DS filter stage or sets the internal coefficients.
+			/// NOTE: Coefficients are set up for hadamard code usage
+			/// NOTE: The value passed is not used
+			/// </summary>
+			public Filter.IIR_Filter.TIIRCoeff HadamardIIR_DS_Coefficients
+			{
+				get
+				{
+					Filter.IIR_Filter.TIIRCoeff goldDS;
+					Filter.getIIRCoefficients_Hadamard_DS(out goldDS);
+					return goldDS;
+				}
+				set
+				{
+					Filter.getIIRCoefficients_Hadamard_DS(out _iirCoefficients_DS);
+				}
+			}
+
+			/// <summary>
+			/// Gets the IIR coefficients for the RF filter stage or sets the internal coefficients.
+			/// NOTE: Coefficients are set up for hadamard code usage
+			/// NOTE: The value passed is not used
+			/// </summary>
+			public Filter.IIR_Filter.TIIRCoeff HadamardIIR_RF_Coefficients
+			{
+				get
+				{
+					Filter.IIR_Filter.TIIRCoeff goldRF;
+					Filter.getIIRCoefficients_Hadamard_RF(out goldRF);
+					return goldRF;
+				}
+				set
+				{
+					Filter.getIIRCoefficients_Hadamard_RF(out _iirCoefficients_RF);
+				}
+			}
+
+			/// <summary>
+			/// Set the IIR coefficients to those needed by the hadamard codes generated from matlab
+			/// </summary>
+			public void setIIRFiltersForHadamardCodes()
+			{
+				Filter.getIIRCoefficients_Hadamard_RF(out _iirCoefficients_RF);
+				Filter.getIIRCoefficients_Hadamard_DS(out _iirCoefficients_DS);
+
+			}
+
+			/// <summary>
+			/// Set the IIR coefficients to those needed by the gold codes generated from matlab
+			/// </summary>
+			public void setIIRFiltersForGoldCodes()
+			{
+				Filter.getIIRCoefficients_Gold_RF(out _iirCoefficients_RF);
+				Filter.getIIRCoefficients_Gold_DS(out _iirCoefficients_DS);
+
+			}
+
+			/// <summary>
+			/// Sets the numerator and denominator coefficients to those applicable to the gold codes
+			/// </summary>
+			public void setFilterCoefficients_Gold()
+			{
+				Filter.getDenominatorFilterCoefficients_Gold_DS(out _filterCoefficients_A_DS);
+				Filter.getNumeratorFilterCoefficients_Gold_DS(out _filterCoefficients_B_DS);
+				Filter.getDenominatorFilterCoefficients_Gold_RF(out _filterCoefficients_A_RF);
+				Filter.getNumeratorFilterCoefficients_Gold_RF(out _filterCoefficients_B_RF);
+			}
+
+			/// <summary>
+			/// Sets the numerator and denominator coefficients to those applicable to the gold codes
+			/// </summary>
+			public void setFilterCoefficients_Hadamard()
+			{
+				Filter.getDenominatorFilterCoefficients_Hadamard_DS(out _filterCoefficients_A_DS);
+				Filter.getNumeratorFilterCoefficients_Hadamard_DS(out _filterCoefficients_B_DS);
+				Filter.getDenominatorFilterCoefficients_Hadamard_RF(out _filterCoefficients_A_RF);
+				Filter.getNumeratorFilterCoefficients_Hadamard_RF(out _filterCoefficients_B_RF);
+			}
+
+			public void setFIRFilterCoefficients_Gold()
+			{
+				Filter.getFIRFilterCoefficients_Gold_DS(out _firCoefficients_DS);
+				Filter.getFIRFilterCoefficients_Gold_RF(out _firCoefficients_RF);
+			}
+
+			public void setFIRFilterCoefficients_Hadamard()
+			{
+				Filter.getFIRFilterCoefficients_Hadamard_DS(out _firCoefficients_DS);
+				Filter.getFIRFilterCoefficients_Hadamard_RF(out _firCoefficients_RF);
+			}
+			*/
+			#endregion
 
 			#endregion
 
@@ -425,6 +687,23 @@ namespace InverseBeamforming
 				{
 					bits[i] = (byte)(bits[i] % M);
 				}
+			}
+
+			/// <summary>
+			/// Generates numberBits of random bits.
+			/// </summary>
+			/// <returns>Byte array containg the generated bits</returns>
+			public byte[] GenerateRandomBits()
+			{
+				byte[] bits = new byte[_numberSymbolsPerWaveform];
+				//Fill with random bits
+				_rng.GetBytes(bits);
+
+				for (int i = 0; i < bits.Length; i++)
+				{
+					bits[i] = (byte)(bits[i] % M);
+				}
+				return bits;
 			}
 
 			/// <summary>
@@ -491,14 +770,17 @@ namespace InverseBeamforming
 				double[] awgn = new double[this._numberSymbolsPerWaveform * this._samplesPerSymbol];
 				double x, y;
 
-				//Loop through each sample
-				for (int i = 0; i < awgn.Length; i++)
+				if (coefficient != 0)
 				{
-					//Uses the Box-Muller transform to get a Gaussian distributed RV
-					x = _rand.Value.NextDouble();
-					y = _rand.Value.NextDouble();
-					awgn[i] = Math.Sqrt(coefficient) * (Math.Sqrt(-2 * Math.Log(x)) * Math.Sin(2 * Math.PI * y));
-				}
+					//Loop through each sample
+					for (int i = 0; i < awgn.Length; i++)
+					{
+						//Uses the Box-Muller transform to get a Gaussian distributed RV
+						x = _rand.Value.NextDouble();
+						y = _rand.Value.NextDouble();
+						awgn[i] = Math.Sqrt(coefficient) * (Math.Sqrt(-2 * Math.Log(x)) * Math.Sin(2 * Math.PI * y));
+					}
+				} 
 
 				//Return the noise array
 				return awgn;
@@ -529,7 +811,7 @@ namespace InverseBeamforming
 						mean += awgn[i];
 					}
 				}
-				return PowerInWaveform(awgn, mean / waveform.Length);
+				return WaveformStatistics.PowerInWaveform(awgn, mean / waveform.Length);
 			}
 
 			/// <summary>
@@ -557,378 +839,7 @@ namespace InverseBeamforming
 			}
 
 			#endregion
-
-			#region Statistics
-
-			/// <summary>
-			/// Get the power in the waveform
-			/// </summary>
-			/// <param name="waveform">Waveform to find the power of</param>
-			/// <returns>The power in the waveform (Watts)</returns>
-			public double PowerInWaveform(double[] waveform)
-			{
-				//The power is just the mean value squared plus the variance
-				return Math.Pow(waveform.Mean(), 2) + waveform.Variance();
-			}
-
-			/// <summary>
-			/// Get the power in the waveform
-			/// </summary>
-			/// <param name="waveform">Waveform to find the power of</param>
-			/// <param name="mean">Mean value of the waveform</param>
-			/// <returns>The power in the waveform (Watts)</returns>
-			public double PowerInWaveform(double[] waveform, double mean)
-			{
-				//The power is just the mean value squared plus the variance
-				return Math.Pow(mean, 2) + waveform.Variance(mean);
-			}
-
-			/// <summary>
-			/// Convert the ratio to decibels
-			/// </summary>
-			/// <param name="signalPower">Power in the signal</param>
-			/// <param name="noisePower">Power in the noise</param>
-			/// <returns>Signal to noise ratio in dB</returns>
-			public double Calc_dB(double signalPower, double noisePower)
-			{
-				return 10 * Math.Log10(signalPower / noisePower);
-			}
-
-			#endregion
-
-			#region Simulations
-
-			/// <summary>
-			/// Runs a simulation for the given parameters and outputs a bit error rate for that simulation
-			/// </summary>
-			/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
-			/// <param name="noisePower">Spectral power of the noise</param>
-			/// <returns>Overall bit error rate of the simulation</returns>
-			public double RunSimulationOneNoisePowerIdealFiltering(int numberToGetWrongEventually, double noisePower)
-			{
-				byte[] inbits = new byte[this._numberSymbolsPerWaveform];
-				double[] waveform;
-				byte[] outbits;
-
-				int totalNumWrong = 0, totalBitsSimulated = 0;
-
-				//Loop while there haven't been enough bit estimation errors
-				while (totalNumWrong < numberToGetWrongEventually)
-				{
-					//Modulate the bits
-					waveform = ModulateRandomBits(ref inbits);
-
-					//Add noise to the waveform
-					AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
-
-					//Demodulate the waveform+noise
-					outbits = CorrelationReceiver(waveform);
-
-					//Get the total number of bits that were estimated wrongly
-					totalNumWrong += numberDifferentBits(inbits, outbits);
-
-					//Update the total number of bits simulated
-					totalBitsSimulated += this._numberSymbolsPerWaveform;
-				}
-
-				//Return the bit error rate
-				return totalNumWrong / (double)totalBitsSimulated;
-			}
-
-			/// <summary>
-			/// Runs a simulation for the given parameters and outputs a bit error rate for that simulation (Real Filters)
-			/// </summary>
-			/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
-			/// <param name="noisePower">Spectral power of the noise</param>
-			/// <returns>Overall bit error rate of the simulation</returns>
-			public double RunSimulationOneNoisePowerRealFiltering(int numberToGetWrongEventually, double noisePower)
-			{
-				byte[] inbits = new byte[this._numberSymbolsPerWaveform];
-				double[] waveform;
-				byte[] outbits;
-
-				int totalNumWrong = 0, totalBitsSimulated = 0;
-
-				//Loop while there haven't been enough bit estimation errors
-				while (totalNumWrong < numberToGetWrongEventually)
-				{
-					//Modulate the bits
-					waveform = ModulateRandomBits(ref inbits);
-
-					//Add noise to the waveform
-					AdditiveWhiteGaussianNoiseNR(ref waveform, noisePower);
-
-					//Filter the waveform
-					waveform = FIR_Filter(waveform);
-
-					//Demodulate the waveform+noise
-					outbits = CorrelationReceiver(waveform);
-
-					//Get the total number of bits that were estimated wrongly
-					totalNumWrong += numberDifferentBits(inbits, outbits);
-
-					//Update the total number of bits simulated
-					totalBitsSimulated += this._numberSymbolsPerWaveform;
-				}
-
-				//Return the bit error rate
-				return totalNumWrong / (double)totalBitsSimulated;
-			}
-
-			/// <summary>
-			/// Runs a simulation over many given noise powers, and returns the bit error rate from each simulation
-			/// </summary>
-			/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
-			/// <param name="noisePowers">Array of spectral powers of noise to simulate</param>
-			/// <returns>Bit error rates of every simulation</returns>
-			public double[] RunSimulationManyNoisePowersIdealFiltering(int numberToGetWrongEventually, double[] noisePowers)
-			{
-				double[] bers = new double[noisePowers.Length];
-				//Loop through each of the noise powers
-				Parallel.For(0, noisePowers.Length - 1, i =>
-				  {
-					  //yield return the BER from that simulation
-					  bers[i] = RunSimulationOneNoisePowerIdealFiltering(numberToGetWrongEventually, noisePowers[i]);
-				  });
-				return bers;
-			}
-
-			/// <summary>
-			/// Runs a simulation over many given noise powers, and returns the bit error rate from each simulation (Real Filter)
-			/// </summary>
-			/// <param name="numberToGetWrongEventually">Number of bits to eventually mis-estimate</param>
-			/// <param name="noisePowers">Array of spectral powers of noise to simulate</param>
-			/// <returns>Bit error rates of every simulation</returns>
-			public double[] RunSimulationManyNoisePowersRealFiltering(int numberToGetWrongEventually, double[] noisePowers)
-			{
-				double[] bers = new double[noisePowers.Length];
-				//Loop through each of the noise powers
-				Parallel.For(0, noisePowers.Length - 1, i =>
-				{
-					//yield return the BER from that simulation
-					bers[i] = RunSimulationOneNoisePowerRealFiltering(numberToGetWrongEventually, noisePowers[i]);
-				});
-				return bers;
-			}
-
-			#endregion
-
-			#region Spreading Codes
-			/// <summary>
-			/// Gets a full waveform length spreading code, ready to multiply with the signal. 
-			/// </summary>
-			/// <param name="user">Index of the spreading code to use (zero based)</param>
-			/// <param name="_samplesPerSymbol">Number of samples per symbol duration</param>
-			/// <param name="_numChips">Number of chips per symbol duration</param>
-			/// <param name="numSymbols">Number of symbols</param>
-			/// <returns>Array containing the spreading code ready to be mixed with the signal</returns>
-			public byte[] GetSpreadingCode(int user, int numSymbols)
-			{
-				//Create a matrix for the spreading code
-				byte[] spreadingCode = new byte[_samplesPerSymbol * numSymbols];
-				int j = 0;
-
-				//If the number of samples per chip is not an integer, throw an exception
-				if (_samplesPerSymbol % _numChips != 0)
-					throw new ArgumentException("The number of samples per chip is not an integer.", "numSamples, numChips");
-
-				//Loop through each symbol
-				for (int i = 0; i < numSymbols; i++)
-				{
-					//Loop through each chip
-					for (int k = 0; k < _numChips; i++)
-					{
-						//Loop through the samples in each chip
-						for (j = 0; j < _samplesPerSymbol / _numChips; i++)
-						{//              | symbol offset |       chip offset         | left in chip                Chip number
-							spreadingCode[i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips + j] = this._codeMatrix[user, k];
-						}
-					}
-				}
-
-				//Return the spreading code
-				return spreadingCode;
-			}
-
-			/// <summary>
-			/// Adds another user spread signal to the given waveform
-			/// </summary>
-			/// <param name="waveform">Waveform to add the other user to</param>
-			/// <param name="otherUser">Index of the core row to use</param>
-			/// <param name="signalPower">Power of the other users signal</param>
-			public void AddSreadWaveform(ref double[] waveform, int otherUser, double signalPower)
-			{
-				byte[] bits = new byte[_numberSymbolsPerWaveform];
-				int index;
-				double[] otherUserWaveform = ModulateRandomBits(ref bits);
-
-				//Loop through each symbol
-				for (int i = 0; i < _numberSymbolsPerWaveform; i++)
-				{
-					//Loop through each chip
-					for (int k = 0; k < _numChips; k++)
-					{
-						index = i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips;
-
-						//Loop through the samples in each chip
-						for (int j = 0; j < _samplesPerSymbol / _numChips; j++)
-						{
-							//The *2 - 1 is to get from 0s and 1s to -1s and 1s
-							//The Sqrt(signalPower/_signalPower) is to convert the other user signal to the desired power
-							otherUserWaveform[index + j] *= Math.Sqrt(signalPower / _signalPower) * ((double)this._codeMatrix[otherUser, k] * 2 - 1);
-
-							//Add the result to the original waveform
-							waveform[index + j] += otherUserWaveform[index + j];
-						}
-					}
-				}
-			}
-
-			///<summary>
-			/// Applies a spreading code to a waveform
-			/// </summary>
-			/// <param name="waveform">Waveform to spread</param>
-			/// <param name="user">Specific spreading code to use (row in the spreading code matrix)</param>
-			/// <param name="_samplesPerSymbol">Number of samples per symbol</param>
-			/// <param name="_numChips">Number of chips per symbol</param>
-			/// <param name="_numberSymbolsPerWaveform">Number of symbols in the waveform</param>
-			/// <returns>Original waveform with the spreading code applied.</returns>
-			public void SpreadWaveform(ref double[] waveform, int user)
-			{
-				//If the number of samples per chip is not an integer, throw an exception
-				if (_samplesPerSymbol % _numChips != 0)
-					throw new ArgumentException("The number of samples per chip is not an integer.", "numSamples, numChips");
-
-				//Loop through each symbol
-				for (int i = 0; i < _numberSymbolsPerWaveform; i++)
-				{
-					//Loop through each chip
-					for (int k = 0; k < _numChips; k++)
-					{
-						//Loop through the samples in each chip
-						for (int j = 0; j < _samplesPerSymbol / _numChips; j++)
-						{//         | symbol offset |       chip offset         | left in chip										Chip number
-							waveform[i * _samplesPerSymbol + k * _samplesPerSymbol / _numChips + j] *= ((double)this._codeMatrix[user, k] * 2 - 1);
-						}
-					}
-				}
-			}
-
-			/// <summary>
-			/// Applies a spreading code to a waveform
-			/// </summary>
-			/// <param name="waveform">Waveform to spread</param>
-			/// <param name="user">Specific spreading code to use (row in the spreading code matrix)</param>
-			/// <param name="_samplesPerSymbol">Number of samples per symbol</param>
-			/// <param name="_numChips">Number of chips per symbol</param>
-			/// <param name="_numberSymbolsPerWaveform">Number of symbols in the waveform</param>
-			/// <returns>Original waveform with the spreading code applied.</returns>
-			/// <remarks>In the implementation, it is functionally equivalent to SpreadWaveform. Applying the same spreading code twice gives the original signal back.</remarks>
-			public void DespreadWaveform(ref double[] waveform, int user)
-			{
-				SpreadWaveform(ref waveform, user);
-			}
-
-			/// <summary>
-			/// Initializes the components necesary to utilize the spreading functions
-			/// </summary>
-			/// <param name="codeMatrix">Code matrix to use to spread the waveforms</param>
-			/// <param name="numChips">Number of chips per symbol</param>
-			public void initializeSpreadingCodes(byte[,] codeMatrix, int numChips)
-			{
-				this.NumChips = numChips;
-				this.CodeMatrix = codeMatrix;
-			}
-
-			/// <summary>
-			/// Returns the gold codes of length 31
-			/// </summary>
-			/// <returns>Byte array containing the gold codes of length 31</returns>
-			public static byte[,] getGoldCodes
-			{
-				get
-				{
-					return new byte[,] {{0,0,0,1,0,1,1,0,0,1,1,1,1,1,0,0,0,1,1,0,1,1,1,0,1,0,1,0,0,0,0,1},
-								{1,1,0,1,1,0,1,0,0,0,0,1,1,0,0,1,0,0,1,1,1,1,1,0,1,1,1,0,0,0,1,0},
-								{1,1,0,0,1,1,0,0,0,1,1,0,0,1,0,1,0,1,0,1,0,0,0,0,0,1,0,0,0,0,1,1},
-								{0,0,1,0,0,0,1,0,0,1,0,0,1,1,1,0,0,0,0,1,0,0,1,1,0,1,1,0,0,1,0,0},
-								{1,1,1,1,1,1,1,0,0,0,0,1,1,0,0,0,1,0,0,1,0,1,0,1,0,0,1,0,1,0,1,1},
-								{1,1,0,0,0,1,1,0,1,0,1,1,0,1,0,1,1,0,0,1,1,0,0,1,1,0,1,1,0,1,0,0},
-								{0,0,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0},
-								{1,1,0,1,0,1,0,1,0,1,0,1,1,0,1,1,1,0,1,1,0,0,1,0,1,1,1,1,0,1,1,1},
-								{0,0,0,1,0,0,0,0,0,0,1,1,0,0,1,1,1,1,0,1,0,1,1,0,0,0,0,0,1,1,0,0},
-								{0,0,0,1,1,0,1,0,1,1,1,0,0,0,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,0,1,1},
-								{0,0,0,0,1,1,1,1,0,1,0,0,0,0,1,0,1,0,0,0,1,1,0,0,0,0,0,1,0,1,0,1},
-								{0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,1,0,1,0,1,0,1,1,1,1,0,0,1,0,0,1},
-								{1,1,1,1,0,0,1,0,1,0,0,0,0,1,1,1,1,1,1,0,0,1,0,0,0,1,1,1,0,0,0,1},
-								{1,1,0,1,1,1,1,1,1,0,0,0,1,0,1,1,0,1,1,1,1,0,1,1,0,0,0,0,0,0,0,0},
-								{0,0,0,0,0,1,0,1,1,0,0,1,0,0,1,0,0,1,0,0,0,1,0,1,1,1,1,0,0,0,1,0},
-								{0,0,1,1,0,0,0,1,1,0,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,0,0,1,1,1},
-								{1,1,0,1,1,0,0,1,1,1,0,0,0,1,0,0,1,1,0,0,0,0,1,1,1,0,1,0,1,1,0,1},
-								{0,0,0,0,1,0,0,1,0,0,0,0,1,1,0,1,0,0,1,1,0,1,0,0,1,0,1,1,1,0,0,0},
-								{0,0,1,0,1,0,0,0,1,0,0,1,1,1,1,0,1,1,0,1,1,0,1,0,1,0,0,1,0,0,1,1},
-								{1,1,1,0,1,0,1,1,1,0,1,1,1,0,0,1,0,0,0,0,0,1,1,0,1,1,0,0,0,1,0,1},
-								{1,1,1,0,1,1,0,1,1,1,1,1,0,1,1,0,1,0,1,1,1,1,1,0,0,1,1,0,1,0,0,0},
-								{1,1,1,0,0,0,0,1,0,1,1,0,1,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,0,1,0},
-								{1,1,1,1,1,0,0,0,0,1,0,1,0,1,1,1,0,0,1,0,1,1,0,1,1,0,0,0,0,1,1,0},
-								{1,1,0,0,1,0,1,0,0,0,1,0,1,0,1,0,1,1,1,0,1,0,0,0,1,1,1,0,1,1,1,0},
-								{0,0,1,0,1,1,1,0,1,1,0,1,0,0,0,1,0,1,1,0,0,0,1,0,0,0,1,1,1,1,1,0},
-								{1,1,1,0,0,1,1,1,0,0,1,0,0,1,1,0,0,1,1,1,0,1,1,1,1,0,0,1,1,1,1,1},
-								{1,1,1,1,0,1,0,0,1,1,0,0,1,0,0,0,0,1,0,1,1,1,0,0,1,1,0,1,1,1,0,0},
-								{1,1,0,1,0,0,1,1,0,0,0,1,0,1,0,0,0,0,0,0,1,0,1,0,0,1,0,1,1,0,1,0},
-								{0,0,0,1,1,1,0,0,1,0,1,0,1,1,0,0,1,0,1,0,0,1,1,1,0,1,0,1,0,1,1,0},
-								{0,0,0,0,0,0,1,1,1,1,0,1,1,1,0,1,1,1,1,1,1,1,0,1,0,1,0,0,1,1,1,1},
-								{0,0,1,1,1,1,0,1,0,0,1,1,1,1,1,1,0,1,0,0,1,0,0,1,0,1,1,1,1,1,0,1},
-								{1,1,0,0,0,0,0,0,1,1,1,1,1,0,1,0,0,0,1,0,0,0,0,1,0,0,0,1,1,0,0,1},
-								{0,0,1,1,1,0,1,1,0,1,1,1,0,0,0,0,1,1,1,1,0,0,0,1,1,1,0,1,0,0,0,0}};
-				}
-			}
-
-			/// <summary>
-			/// Returns Hadamard codes of size 32
-			/// </summary>
-			/// <returns>Hadamard codes of length 32</returns>
-			public static byte[,] getHadamardCodes
-			{
-				get
-				{
-					return new byte[,] {{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-									  {1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0},
-									  {1,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0},
-									  {1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1},
-									  {1,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0},
-									  {1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1},
-									  {1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1},
-									  {1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0},
-									  {1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0},
-									  {1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1},
-									  {1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1},
-									  {1,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0},
-									  {1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1},
-									  {1,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0},
-									  {1,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0},
-									  {1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1},
-									  {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-									  {1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1},
-									  {1,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1},
-									  {1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0},
-									  {1,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1},
-									  {1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0},
-									  {1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0},
-									  {1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1},
-									  {1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1},
-									  {1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,0},
-									  {1,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,1,1,0,0,1,1,0,0},
-									  {1,1,0,0,1,1,0,0,1,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,1,0,0,1,1,0,0,1},
-									  {1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0},
-									  {1,1,0,1,0,0,1,0,1,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,1,0,1,0,0,1,0,1},
-									  {1,1,1,0,0,0,0,1,1,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,1,1,0,0,0,0,1,1},
-									  {1,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0}};
-				}
-			}
-
-			#endregion
-
+			
 			#region Helper Functions
 
 			/// <summary>
@@ -949,66 +860,53 @@ namespace InverseBeamforming
 				//Return the time array
 				return time;
 			}
+			#endregion
+
+			#region Code Division
 
 			/// <summary>
-			/// Set the ds filter coefficients to those matching the gold codes
+			/// Initialize the spreading code instance
 			/// </summary>
-			public double[] GoldFIR_DS_Coefficients
+			/// <param name="numberChips">Number of chips per symbol</param>
+			/// <param name="codeMatrix">Code matrix to use when spreading (If null, uses Gold codes of size 31)</param>
+			public void InitializeCodeDivision(int numberChips=31, byte[,] codeMatrix=null)
 			{
-				get
-				{
-					return new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
-				}
-				set
-				{
-					this._firCoefficients_DS = new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
-				}
+				this._codeDivision = new SpreadingCode(numberChips, _samplesPerSymbol, _numberSymbolsPerWaveform, codeMatrix);
+			}
+
+
+			///<summary>
+			/// Applies a spreading code to a waveform
+			/// </summary>
+			/// <param name="waveform">Waveform to spread</param>
+			/// <param name="user">Specific spreading code to use (row in the spreading code matrix)</param>
+			/// <param name="_numberSymbolsPerWaveform">Number of symbols in the waveform</param>
+			/// <returns>Original waveform with the spreading code applied.</returns>
+			public void SpreadWaveform(ref double[] waveform, int user)
+			{
+				_codeDivision.SpreadWaveform(ref waveform, user);
+			}
+
+			///<summary>
+			/// Applies a despreading code to a waveform
+			/// </summary>
+			/// <param name="waveform">Waveform to spread</param>
+			/// <param name="user">Specific spreading code to use (row in the spreading code matrix)</param>
+			/// <param name="_numberSymbolsPerWaveform">Number of symbols in the waveform</param>
+			/// <returns>Original waveform with the despreading code applied.</returns>
+			public void DespreadWaveform(ref double[] waveform, int user)
+			{
+				_codeDivision.DespreadWaveform(ref waveform, user);
 			}
 
 			/// <summary>
-			/// Set the rf filter coefficients to those matching the gold codes
+			/// Adds a seperately generated and spread waveform to the given waveform
 			/// </summary>
-			public double[] GoldFIR_RF_Coefficients
+			/// <param name="waveform">Waveform to add another spread and modulated waveform to</param>
+			/// <param name="user">User number of the added signal</param>
+			public void AddSpreadWaveform(ref double[] waveform, int user, double noisePower)
 			{
-				get
-				{
-					return new double[] { -0.009168, -0.022866, -0.049365, -0.072549, -0.062206, 0.000000, 0.099806, 0.192854, 0.230794, 0.192854, 0.099806, 0.000000, -0.062206, -0.072549, -0.049365, -0.022866, -0.009168 };
-				}
-				set
-				{
-					this._firCoefficients_RF = new double[] { -0.009168, -0.022866, -0.049365, -0.072549, -0.062206, 0.000000, 0.099806, 0.192854, 0.230794, 0.192854, 0.099806, 0.000000, -0.062206, -0.072549, -0.049365, -0.022866, -0.009168 };
-				}
-				
-			}
-
-			/// <summary>
-			/// Set the ds filter coefficients to those matching the hadamard codes
-			/// </summary>
-			public double[] HadamardFIR_DS_Coefficients
-			{
-				get
-				{
-					return new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
-				}
-				set
-				{
-					this._firCoefficients_DS = new double[] { -0.009221, -0.022961, -0.049499, -0.072660, -0.062240, 0.000000, 0.099730, 0.192645, 0.230519, 0.192645, 0.099730, 0.000000, -0.062240, -0.072660, -0.049499, -0.022961, -0.009221 };
-				}
-			}
-
-			/// <summary>
-			/// Set the rf filter coefficients to those matching the hadamard codes
-			/// </summary>
-			public double[] HadamardFIR_RF_Coefficients
-			{
-				get
-				{
-					return new double[] { -0.009165, -0.022861, -0.049358, -0.072544, -0.062204, 0.000000, 0.099810, 0.192864, 0.230808, 0.192864, 0.099810, 0.000000, -0.062204, -0.072544, -0.049358, -0.022861, -0.009165 };
-				}
-				set
-				{
-					this._firCoefficients_RF = new double[] { -0.009165, -0.022861, -0.049358, -0.072544, -0.062204, 0.000000, 0.099810, 0.192864, 0.230808, 0.192864, 0.099810, 0.000000, -0.062204, -0.072544, -0.049358, -0.022861, -0.009165 };
-				}
+				_codeDivision.AddSpreadWaveform(ref waveform, user, noisePower, this);
 			}
 
 			#endregion

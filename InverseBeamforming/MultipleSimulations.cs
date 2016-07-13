@@ -52,6 +52,11 @@ namespace InverseBeamforming
 			private ESimulationType _simulationType;
 
 			/// <summary>
+			/// Number of total users of the communications system;
+			/// </summary>
+			protected int _numberTotalUsers;
+
+			/// <summary>
 			/// Construct a class that can run multiple simulations simultaneously
 			/// </summary>
 			/// <param name="modulation">Modulation to use</param>
@@ -60,13 +65,14 @@ namespace InverseBeamforming
 			/// <param name="numberToGetWrongEventually">Number of bit errors to simulate to in every simulation</param>
 			/// <param name="logFilename">Log file name base to use.
 			/// Note: The noise power will be appended to the end, and each simulation will get its own log file.</param>
-			public MultipleSimulations(Modulations.ModulationType modulation, ESimulationType simulationType, double[] noisePowers, int numberToGetWrongEventually, string logFilename)
+			public MultipleSimulations(Modulations.ModulationType modulation, ESimulationType simulationType, double[] noisePowers, int numberToGetWrongEventually, string logFilename, int numberTotalUsers = 1)
 			{
 				_originalModulation = modulation;
 				_numberToGetWrongEventually = numberToGetWrongEventually;
 				_noisePowers = noisePowers;
 				_logFilename = logFilename;
 				_simulationType = simulationType;
+				_numberTotalUsers = numberTotalUsers;
 			}
 
 			/// <summary>
@@ -75,6 +81,10 @@ namespace InverseBeamforming
 			/// <returns>List of Final Simulation results from each of the simulations</returns>
 			public async Task<List<FinalSimResults>> RunSimulations()
 			{
+				if(_numberTotalUsers>1)
+				{
+					return await RunManyCDMASimulationsObservableAsync();
+				}
 				//Switch on the simulation type
 				switch (_simulationType)
 				{
@@ -215,8 +225,7 @@ namespace InverseBeamforming
 				List<FinalSimResults> results = new List<FinalSimResults>();
 				var provider = new SimulationTracker[_noisePowers.Length];
 				var simulations = new SingleSimulation[_noisePowers.Length];
-				int K = 0;
-				var otherUsersPowers = new double[K];
+				var otherUsersPowers = new double[_numberTotalUsers-1];
 				Modulations.ModulationType modulation;
 
 				for(int i = 0; i<otherUsersPowers.Length; i++)
@@ -259,7 +268,7 @@ namespace InverseBeamforming
 					simulations[i] = new SingleSimulation(modulation, reporters[i]);
 
 					//Add the results of the simulation to the list
-					results.Add(simulations[i].RunCodeDivisionSimulationObservable(_numberToGetWrongEventually, _noisePowers[i], otherUsersPowers, 3));
+					results.Add(simulations[i].RunCodeDivisionSimulationObservable(_numberToGetWrongEventually, _noisePowers[i], otherUsersPowers));
 				});
 
 				results.Sort();

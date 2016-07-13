@@ -23,7 +23,7 @@ namespace InverseBeamforming
 		{
 			int j, N;
 			IIR_Filter.TIIRFilterParams IIRFilt;  // Defined in IIRFilterCode.h
-			IIR_Filter.TIIRCoeff IIRCoeff=new IIR_Filter.TIIRCoeff(true);
+			IIR_Filter.TIIRCoeff IIRCoeff;
 
 			// This structure must be filled before calling CalcIIRFilterCoeff().
 			IIRFilt.IIRPassType = IIR_Filter.TIIRPassTypes.BPF;        // iirLPF, iirHPF, iirBPF, iirNOTCH, iirALLPASS  (defined in IIRFilterCode.h)
@@ -41,7 +41,7 @@ namespace InverseBeamforming
 
 			// This will fill the IIRCoeff struct with the 2nd order IIR coefficients.
 			//IIRCoeff = IIR_Filter.CalcIIRFilterCoeff(IIRFilt);
-			getIIRCoefficients_Hadamard_RF(ref IIRCoeff);
+			getIIR_Coefficients_Hadamard_RF(out IIRCoeff);
 
 			// If desired, this will create an Nth order poly from the 2nd order polys in IIRCoeff.
 			double[] DenomCoeff = new double[25];
@@ -117,8 +117,7 @@ namespace InverseBeamforming
 			} 
 
 		}
-
-
+		
 		public static class IIR_Filter
 		{
 			private static readonly double OVERFLOW_LIMIT = 1.0E20;
@@ -4081,6 +4080,176 @@ namespace InverseBeamforming
 					m_aCoeff[i] *= normFactor;
 
 				return g;
+			}
+		}
+
+		public class OtherFilter
+		{
+			public static double[] filter(double[] b, double[] a, double[] x)
+			{
+				double[] filter = null;
+				double[] a1 = getRealArrayScalarDiv(a, a[0]);
+				double[] b1 = getRealArrayScalarDiv(b, a[0]);
+				int sx = x.Length;
+				filter = new double[sx];
+				filter[0] = b1[0] * x[0];
+				for (int i = 1; i < sx; i++)
+				{
+					filter[i] = 0.0;
+					for (int j = 0; j <= i; j++)
+					{
+						int k = i - j;
+						if (j > 0)
+						{
+							if ((k < b1.Length) && (j < x.Length))
+							{
+								filter[i] += b1[k] * x[j];
+							}
+							if ((k < filter.Length) && (j < a1.Length))
+							{
+								filter[i] -= a1[j] * filter[k];
+							}
+						}
+						else
+						{
+							if ((k < b1.Length) && (j < x.Length))
+							{
+								filter[i] += (b1[k] * x[j]);
+							}
+						}
+					}
+				}
+				return filter;
+			}
+
+			public static double[] conv(double[] a, double[] b)
+			{
+				double[] c = null;
+				int na = a.Length;
+				int nb = b.Length;
+				if (na > nb)
+				{
+					if (nb > 1)
+					{
+						c = new double[na + nb - 1];
+						for (int i = 0; i < c.Length; i++)
+						{
+							if (i < a.Length)
+							{
+								c[i] = a[i];
+							}
+							else
+							{
+								c[i] = 0.0;
+							}
+						}
+						a = c;
+					}
+					c = filter(b, new double[] { 1.0 }, a);
+				}
+				else
+				{
+					if (na > 1)
+					{
+						c = new double[na + nb - 1];
+						for (int i = 0; i < c.Length; i++)
+						{
+							if (i < b.Length)
+							{
+								c[i] = b[i];
+							}
+							else
+							{
+								c[i] = 0.0;
+							}
+						}
+						b = c;
+					}
+					c = filter(a, new double[] { 1.0 }, b);
+				}
+				return c;
+			}
+
+			public static double[] deconv(double[] b, double[] a)
+			{
+				double[] q = null;
+				int sb = b.Length;
+				int sa = a.Length;
+				if (sa > sb)
+				{
+					return q;
+				}
+				double[] zeros = new double[sb - sa + 1];
+				for (int i = 1; i < zeros.Length; i++)
+				{
+					zeros[i] = 0.0;
+				}
+				zeros[0] = 1.0;
+				q = filter(b, a, zeros);
+				return q;
+			}
+
+			public static double[] deconvRes(double[] b, double[] a)
+			{
+				double[] r = null;
+				r = getRealArraySub(b, conv(a, deconv(b, a)));
+				return r;
+			}
+
+			public static double[] getRealArraySub(double[] dSub0, double[] dSub1)
+			{
+				double[] dSub = null;
+				if ((dSub0 == null) || (dSub1 == null))
+				{
+					throw new ArgumentException("The array must be defined or diferent to null");
+				}
+				if (dSub0.Length != dSub1.Length)
+				{
+					throw new ArgumentException("Arrays must be the same size");
+				}
+				dSub = new double[dSub1.Length];
+				for (int i = 0; i < dSub.Length; i++)
+				{
+					dSub[i] = dSub0[i] - dSub1[i];
+				}
+				return dSub;
+			}
+
+			public static double[] getRealArrayScalarDiv(double[] dDividend, double dDivisor)
+			{
+				if (dDividend == null)
+				{
+					throw new ArgumentException("The array must be defined or diferent to null");
+				}
+				if (dDividend.Length == 0)
+				{
+					throw new ArgumentException("The size array must be greater than Zero");
+				}
+				double[] dQuotient = new double[dDividend.Length];
+
+				for (int i = 0; i < dDividend.Length; i++)
+				{
+					if (!(dDivisor == 0.0))
+					{
+						dQuotient[i] = dDividend[i] / dDivisor;
+					}
+					else
+					{
+						if (dDividend[i] > 0.0)
+						{
+							dQuotient[i] = Double.PositiveInfinity;
+						}
+						if (dDividend[i] == 0.0)
+						{
+							dQuotient[i] = Double.NaN;
+						}
+						if (dDividend[i] < 0.0)
+						{
+							dQuotient[i] = Double.NegativeInfinity;
+						}
+					}
+				}
+				return dQuotient;
 			}
 		}
 	}

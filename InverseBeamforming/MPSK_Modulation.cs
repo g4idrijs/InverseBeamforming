@@ -55,13 +55,15 @@ namespace InverseBeamforming
 				this.Phases = phases;
 				var pi2 = 2 * Math.PI * carrierFrequency / samplingRate;
 
+				signalPower = Math.Sqrt(2 * signalPower);
+
 				//Loop through each symbol
 				for (int i = 0; i < M; i++)
 				{
 					//Loop through the samples in the symbol
 					for (int k = 0; k < samplesPerSymbol; k++)
 					{
-						this._reference[i, k] = Math.Cos(pi2 * k + phases[i]);
+						this._reference[i][k] = signalPower * Math.Cos(pi2 * k + phases[i]);
 					}
 				}
 
@@ -84,6 +86,7 @@ namespace InverseBeamforming
 			{
 				this._phases = old._phases;
 				this._bitsToCommunicationsSymbols = old._bitsToCommunicationsSymbols;
+				this._reference = (double[][])old._reference.Clone();
 			}
 
 			/// <summary>

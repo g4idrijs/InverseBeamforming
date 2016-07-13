@@ -59,7 +59,7 @@ namespace InverseBeamforming
 						}
 					}
 					//An IOException means that the file is probably syncing with OneDrive or something like that
-					catch (IOException e)
+					catch (IOException)
 					{
 						notWritten = true;
 					}
@@ -83,18 +83,18 @@ namespace InverseBeamforming
 						//If there are previous ISRs that haven't been written to the file, then write them now while it is open
 						foreach (var oldISR in _pastISRs.ToList())
 						{
-							file.WriteLine(String.Format("{1:MM/dd/yyyy HH:mm:ss:fffffff} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: 0.00}, Percent errors found: {6: 0.00}", oldISR.ToString(), DateTime.Now, oldISR.TotalErrors, oldISR.NumberErrorsThisIteration, oldISR.TotalBitsSimulated, oldISR.BitErrorRate, oldISR.PercentErrorHad));
+							file.WriteLine(String.Format("{1:MM/dd/yyyy HH:mm:ss:fffffff} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: #.00e0}, Percent errors found: {6} %", oldISR.ToString(), DateTime.Now, oldISR.TotalErrors, oldISR.NumberErrorsThisIteration, oldISR.TotalBitsSimulated, oldISR.BitErrorRate, oldISR.PercentErrorHad.ToString("##.00").PadLeft(5)));
 						}
 
 						// Clear the list of unwritten ISRs because they just got written
 						_pastISRs.Clear();
 
 						//Write the current information to the log file
-						file.WriteLine(String.Format("{1:MM/dd/yyyy HH:mm:ss:fffffff} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: 0.00}, Percent errors found: {6: 0.00}", isr.ToString(), DateTime.Now, isr.TotalErrors, isr.NumberErrorsThisIteration, isr.TotalBitsSimulated, isr.BitErrorRate, isr.PercentErrorHad));
+						file.WriteLine(String.Format("{1:MM/dd/yyyy HH:mm:ss:fffffff} Total Errors: {2, 5}, Errors this iteration: {3, 5}, Total Bits Simulated: {4, 9}, Bit Error Rate: {5: #.00e0}, Percent errors found: {6} %", isr.ToString(), DateTime.Now, isr.TotalErrors, isr.NumberErrorsThisIteration, isr.TotalBitsSimulated, isr.BitErrorRate, isr.PercentErrorHad.ToString("##.00").PadLeft(5)));
 					}
 				}
 				//If there was an IOException, then the file is probably locked, so add the current ISR to the list to be added later
-				catch (IOException e)
+				catch (IOException)
 				{
 					_pastISRs.Add(isr);
 				}
@@ -124,7 +124,7 @@ namespace InverseBeamforming
 						}
 					}
 					//If there was an IOException, then the error didn't get written to the logfile
-					catch (IOException e)
+					catch (IOException)
 					{
 						notWritten = true;
 					}
@@ -166,7 +166,7 @@ namespace InverseBeamforming
 						}
 					}
 					//If there was an IOException, then the error didn't get written to the logfile
-					catch (IOException e)
+					catch (IOException)
 					{
 						notWritten = true;
 					}
