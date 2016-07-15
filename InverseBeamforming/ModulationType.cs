@@ -862,7 +862,7 @@ namespace InverseBeamforming
 			}
 			#endregion
 
-			#region Code Division
+			#region Code Division Wrapper Functions
 
 			/// <summary>
 			/// Initialize the spreading code instance
